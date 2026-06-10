@@ -76,7 +76,7 @@ export interface ImageModule {
   prompt: string;
   type: 'image-to-image' | 'text-to-image';
   imageBase64?: string;
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  status: 'pending' | 'queued' | 'generating' | 'completed' | 'failed';
 }
 
 export interface VideoScriptOutput {
@@ -100,7 +100,7 @@ export interface DetailModule {
   type: 'text-to-image' | 'image-to-image';
   prompt: string;
   imageBase64?: string;
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  status: 'pending' | 'queued' | 'generating' | 'completed' | 'failed';
 }
 
 /** GET /api/listing/runs/:id response. */
@@ -116,7 +116,7 @@ export interface ListingImageStatus {
   id: string;
   moduleTag: string;
   model: string;
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  status: 'pending' | 'queued' | 'generating' | 'completed' | 'failed';
 }
 
 /** DB row shapes (internal). */
@@ -141,7 +141,7 @@ export interface ListingImage {
   prompt: string;
   imageBase64: string | null;
   imageUrl: string | null;
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  status: 'pending' | 'queued' | 'generating' | 'completed' | 'failed';
   taskId: string | null;
   createdAt: number;
   updatedAt: number;
