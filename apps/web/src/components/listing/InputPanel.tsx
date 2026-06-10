@@ -33,9 +33,10 @@ interface InputPanelProps {
   onSave?: () => void;
   canSave?: boolean;
   saving?: boolean;
+  hasSaved?: boolean;
 }
 
-export function InputPanel({ onGenerate, generating, onSave, canSave, saving }: InputPanelProps) {
+export function InputPanel({ onGenerate, generating, onSave, canSave, saving, hasSaved }: InputPanelProps) {
   const [form, setForm] = useState<ListingProductInput>(loadForm);
   const [productImage, setProductImage] = useState<string | null>(() => {
     try { return localStorage.getItem(IMG_KEY); } catch { return null; }
@@ -93,9 +94,9 @@ export function InputPanel({ onGenerate, generating, onSave, canSave, saving }: 
           </div>
         </div>
         <select className={styles.select} value="shopee-listing-v3" disabled>
-          <option>Shopee Listing V3</option>
+          <option>Listing V3</option>
         </select>
-        <p className={styles.hint}>Shopee 东南亚市场 Listing 文案 + 主图 + 详情图一站式生成</p>
+        <p className={styles.hint}>Listing 文案 + 主图 + 详情图一站式生成</p>
       </div>
 
       <ResourceLibrary open={libraryOpen} onClose={() => setLibraryOpen(false)} />
@@ -264,7 +265,7 @@ export function InputPanel({ onGenerate, generating, onSave, canSave, saving }: 
           disabled={!canSave || saving}
           title={!canSave ? '请先生成文案' : undefined}
         >
-          {saving ? '⏳ 保存中...' : '💾 保存到项目'}
+          {saving ? '⏳ 保存中...' : hasSaved ? '💾 更新项目' : '💾 保存到项目'}
         </button>
       </div>
     </div>

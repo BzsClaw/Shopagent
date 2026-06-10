@@ -51,3 +51,4 @@
   background: var(--accent); border: 0; cursor: pointer; padding: 6px 14px; border-radius: var(--radius-sm);
 }
 .confirmBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.select { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; background: var(--bg-panel); color: var(--text); }

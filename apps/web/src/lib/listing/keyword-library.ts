@@ -1,39 +1,93 @@
 /**
- * 关键词库 — 移植自 ListingGen src/lib/keyword-library.ts
- * localStorage 持久化，分类管理
+ * 关键词库 — daemon SQLite 持久化，按语言分类，支持标记
  */
-const STORAGE_KEY = 'shopagent_keyword_library';
+const DEF_LANG = 'en';
 
-export const DEFAULT_CATEGORIES = ['表层词', '场景词', '情绪词', '身份词', '差异化卖点', '其他卖点'];
+export const LANGUAGES: Record<string, string> = {
+  en: '英语 English', 'zh-CN': '中文 简体', th: '泰语 ไทย', vi: '越南语 Tiếng Việt',
+  id: '印尼语 Bahasa', 'pt-BR': '葡萄牙语 Português', es: '西班牙语 Español',
+};
 
-export interface KeywordLibrary { [category: string]: string[] }
+const DEFAULT_CATEGORIES = ['表层词', '场景词', '情绪词', '身份词', '差异化卖点', '其他卖点', '竞品差评痛点'];
+export { DEFAULT_CATEGORIES };
+export function getDefaultCategories(): string[] { return [...DEFAULT_CATEGORIES]; }
 
-function load(): KeywordLibrary {
-  if (typeof window === 'undefined') return {};
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : getDefault(); } catch { return getDefault(); }
-}
-function save(lib: KeywordLibrary) { if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(lib)); }
-function getDefault(): KeywordLibrary { return Object.fromEntries(DEFAULT_CATEGORIES.map((c) => [c, []])); }
-function ensureCategories(lib: KeywordLibrary): KeywordLibrary {
-  const next = { ...lib }; for (const cat of DEFAULT_CATEGORIES) { if (!next[cat]) next[cat] = []; } return next;
+export interface KeywordItem { text: string; tag: string | null; }
+
+// ─── Daemon API helpers ────────────────────────────────
+
+async function api(path: string, init?: RequestInit): Promise<any> {
+  const res = await fetch('/api/listing' + path, init);
+  if (!res.ok) throw new Error('API ' + res.status);
+  return res.json();
 }
 
-export function getKeywordLibrary(): KeywordLibrary { return ensureCategories(load()); }
-export function getCategoryKeywords(category: string): string[] { return getKeywordLibrary()[category] || []; }
-export function addKeyword(category: string, keyword: string) {
-  const lib = getKeywordLibrary(); if (!lib[category]) lib[category] = [];
-  const t = keyword.trim(); if (t && !lib[category].includes(t)) lib[category].push(t); save(lib);
+// ─── Async API (language-aware) ─────────────────────────
+
+export async function getKeywordLibraryAsync(language: string = DEF_LANG): Promise<Record<string, KeywordItem[]>> {
+  try { return await api('/keywords?language=' + encodeURIComponent(language)); }
+  catch { return {}; }
 }
-export function removeKeyword(category: string, keyword: string) {
-  const lib = getKeywordLibrary(); if (lib[category]) lib[category] = lib[category].filter((k) => k !== keyword); save(lib);
+
+// Synchronous version for backward-compatibility (ResourceLibrary)
+export function getKeywordLibrary(language: string = DEF_LANG): Record<string, string[]> {
+  return {};
 }
-export function addCategory(category: string) { const lib = getKeywordLibrary(); if (!lib[category]) { lib[category] = []; save(lib); } }
-export function removeCategory(category: string) { const lib = getKeywordLibrary(); delete lib[category]; save(lib); }
-export function exportKeywordLibrary(): string { return JSON.stringify(getKeywordLibrary(), null, 2); }
-export function importKeywordLibrary(json: string): KeywordLibrary {
-  const parsed = JSON.parse(json);
-  if (typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('格式错误');
-  const lib: KeywordLibrary = {};
-  for (const [k, v] of Object.entries(parsed)) { if (Array.isArray(v)) lib[k] = v.filter((x): x is string => typeof x === 'string'); }
-  const merged = { ...getKeywordLibrary(), ...lib }; save(merged); return merged;
+export const KEYWORD_TAGS = { star: '⭐', hot: '🔥', new: '🆕' } as Record<string, string>;
+
+export async function saveKeywords(language: string, category: string, keywords: KeywordItem[]) {
+  await api('/keywords', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language, category, keywords }),
+  });
+}
+
+export async function deleteKeywords(language: string, category: string) {
+  await api('/keywords?language=' + encodeURIComponent(language) + '&category=' + encodeURIComponent(category), { method: 'DELETE' });
+}
+
+// ─── Backward-compatible wrappers (for ResourceLibrary) ──
+
+export async function addKeyword(category: string, keyword: string, language = DEF_LANG) {
+  const lib = await getKeywordLibraryAsync(language);
+  const items = lib[category] || [];
+  if (!items.some(i => i.text === keyword.trim())) {
+    items.push({ text: keyword.trim(), tag: null });
+    await saveKeywords(language, category, items);
+  }
+}
+
+export async function removeKeyword(category: string, keyword: string, language = DEF_LANG) {
+  const lib = await getKeywordLibraryAsync(language);
+  const items = (lib[category] || []).filter(i => i.text !== keyword);
+  await saveKeywords(language, category, items);
+}
+
+export async function toggleKeywordTag(category: string, keywordText: string, tag: string, language = DEF_LANG) {
+  const lib = await getKeywordLibraryAsync(language);
+  const items = lib[category] || [];
+  const item = items.find(i => i.text === keywordText);
+  if (item) { item.tag = item.tag === tag ? null : tag; }
+  await saveKeywords(language, category, items);
+}
+
+export async function addCategory(category: string, language = DEF_LANG) {
+  const lib = await getKeywordLibraryAsync(language);
+  if (!lib[category]) await saveKeywords(language, category, []);
+}
+
+export async function exportKeywordLibrary(language: string = DEF_LANG): Promise<string> {
+  const lib = await getKeywordLibraryAsync(language);
+  const plain: Record<string, string[]> = {};
+  for (const [cat, items] of Object.entries(lib)) { plain[cat] = items.map(i => i.text); }
+  return JSON.stringify(plain, null, 2);
+}
+
+export async function importKeywordLibrary(data: string, language: string = DEF_LANG): Promise<void> {
+  const parsed = JSON.parse(data);
+  for (const [cat, texts] of Object.entries(parsed)) {
+    if (Array.isArray(texts)) {
+      await saveKeywords(language, cat, texts.map((t: string) => ({ text: String(t), tag: null })));
+    }
+  }
 }

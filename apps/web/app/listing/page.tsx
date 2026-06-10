@@ -98,6 +98,7 @@ export default function ListingPage() {
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedProjectId, setSavedProjectId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const imagesRef = useRef<Map<string, { status: string; imageBase64?: string }>>(new Map());
   const productImageRef = useRef<string | undefined>(undefined); // 产品白底图 base64，用于图生图参考
@@ -114,7 +115,7 @@ export default function ListingPage() {
       if (tag === 'MAIN_A') { next.mainA.status = p.status as ImageModule['status']; if (p.imageBase64) next.mainA.imageBase64 = p.imageBase64; }
       else if (tag === 'MAIN_B') { next.mainB.status = p.status as ImageModule['status']; if (p.imageBase64) next.mainB.imageBase64 = p.imageBase64; }
       else if (tag === 'MAIN_C') { next.mainC.status = p.status as ImageModule['status']; if (p.imageBase64) next.mainC.imageBase64 = p.imageBase64; }
-      else if (tag === 'VIDEO_COVER') { if (p.imageBase64) next.videoScript.coverImageBase64 = p.imageBase64; }
+      else if (tag === 'VIDEO_COVER') { if (p.imageBase64) next.videoScript.coverImageBase64 = p.imageBase64; if (p.status) next.videoScript.coverStatus = p.status; }
       else if (tag.startsWith('DETAIL_')) {
         const idx = parseInt(tag.split('_')[1]!) - 1;
         if (idx >= 0 && idx < next.details.length) {
@@ -156,11 +157,14 @@ export default function ListingPage() {
           productImageBase64: productImageRef.current,
           output,
           imageResults: Array.from(imagesRef.current.entries()).map(([tag, data]) => ({ tag, ...data })),
+          projectId: savedProjectId,
         }),
       });
       if (!res.ok) { const e = await res.json().catch(()=>({error:'Unknown'})); throw new Error(e.error || 'Save failed'); }
       const { projectId } = await res.json() as { projectId: string };
-      navigate({ kind: 'project', projectId, conversationId: null, fileName: null });
+      setSavedProjectId(projectId);
+      // Use full page navigation — the listing page may render standalone outside App.tsx
+      window.location.href = '/projects/' + encodeURIComponent(projectId) + '/files/listing.html';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
     }
@@ -216,11 +220,11 @@ export default function ListingPage() {
 
   const enqueue = useCallback((moduleTag: string, prompt: string) => {
     console.log('[ShopAgent] enqueue:', moduleTag, 'prompt len:', prompt?.length || 0);
-    if (!prompt) { console.warn('[ShopAgent] enqueue skipped: empty prompt'); return; }
+    if (!prompt || !prompt.trim()) { setError('请先生成文案，再点击生成图片'); setTimeout(() => setError(null), 3000); return; }
     const needsRef = IMG2IMG_TAGS.has(moduleTag);
     queueRef.current.push({ moduleTag, prompt, needsRef });
     setQueueSize(queueRef.current.length);
-    updateImage(moduleTag, { status: 'generating' });
+    updateImage(moduleTag, { status: 'queued' as any });
   }, [updateImage]);
 
   const processQueue = useCallback(async () => {
@@ -239,7 +243,7 @@ export default function ListingPage() {
         const ref = task.needsRef && productImageRef.current
           ? `data:image/png;base64,${productImageRef.current}`
           : undefined;
-        const r = await generateImageDirect(imgKey, imgUrl, imgModel, task.prompt, ref);
+        updateImage(task.moduleTag, { status: 'generating' as any }); console.log('[ShopAgent] processQueue generating:', task.moduleTag, 'prompt:', (task.prompt||'').slice(0,80), 'hasRef:', !!ref); const r = await generateImageDirect(imgKey, imgUrl, imgModel, task.prompt, ref); console.log('[ShopAgent] processQueue result:', task.moduleTag, r ? 'OK len='+r.length : 'FAILED');
         updateImage(task.moduleTag, { status: r ? 'completed' : 'failed', imageBase64: r || undefined });
       } catch { updateImage(task.moduleTag, { status: 'failed' }); }
     }
@@ -264,7 +268,7 @@ export default function ListingPage() {
         >← 主页</button>
         <span className={styles.logo}>📋</span>
         <h1 className={styles.title}>Listing 工作台</h1>
-        <span className={styles.badge}>Shopee v3</span>
+        
 
         <div style={{ flex: 1 }} />
         {status === 'llm_generating' && <span className={styles.statusPill}><span className={styles.pillSpinner} /> AI 文案生成中...</span>}
@@ -275,7 +279,7 @@ export default function ListingPage() {
 
       <div ref={containerRef} className={`${styles.split} ${dragging ? styles.dragging : ''}`}>
         <div style={{ width: `${leftPct}%` }} className={styles.leftPane}>
-          <InputPanel onGenerate={handleGenerateText} generating={generating} onSave={handleSave} canSave={canSave} saving={saving} />
+          <InputPanel onGenerate={handleGenerateText} generating={generating} onSave={handleSave} canSave={canSave} saving={saving} hasSaved={!!savedProjectId} />
         </div>
         <div className={`${styles.divider} ${dragging ? styles.dividerActive : ''}`} onMouseDown={() => setDragging(true)} />
         <div className={styles.rightPane}>
@@ -286,10 +290,7 @@ export default function ListingPage() {
       {settingsOpen && (
         <div className={styles.modalOverlay} onClick={() => setSettingsOpen(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span>⚙ API 配置</span>
-              <button className={styles.modalClose} onClick={() => setSettingsOpen(false)}>✕</button>
-            </div>
+            <button className={styles.modalClose} onClick={() => setSettingsOpen(false)} style={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>✕</button>
             <ApiKeySettings />
           </div>
         </div>

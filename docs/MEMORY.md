@@ -1,0 +1,1 @@
+- [ShopAgent 项目状态](shopagent-project-status.md) — 全部模块完成度、待优化清单、12条踩坑经验、代码路径速查

@@ -25,7 +25,7 @@ export async function generateImage(
 function getMaxPolls(model: string): number {
   if (model.includes('doubao') || model.includes('seedance')) return 180;
   if (model.includes('gpt') || model.includes('image-2')) return 180;
-  return 20; // Gemini
+  return 60; // Gemini (up to 180s)
 }
 
 // ─── tryGenerate — 复刻原版 tryGenerate ──────────────────

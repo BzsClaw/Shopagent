@@ -21,7 +21,7 @@ interface OutputPanelProps {
 
 export function OutputPanel({ output, status, onRegenerateImage }: OutputPanelProps) {
   const [videoCollapsed, setVideoCollapsed] = useState(false);
-  const [textEditing, setTextEditing] = useState(false);
+  const [textEditing, setTextEditing] = useState(false); const [copiedIdx, setCopiedIdx] = useState(-1);
   const [editedText, setEditedText] = useState('');
 
   // ─── generating 状态 ───
@@ -121,8 +121,8 @@ export function OutputPanel({ output, status, onRegenerateImage }: OutputPanelPr
                     const text = output.videoScript.shots.map(
                       s => `${s.name} | ${s.duration} | ${s.content} | ${s.reference}`
                     ).join('\n');
-                    await navigator.clipboard.writeText(text);
-                  }}>📋 复制</button>
+                    await navigator.clipboard.writeText(text); setCopiedIdx(1); setTimeout(() => setCopiedIdx(-1), 1500);
+                  }}>{copiedIdx === 1 ? '✓ 已复制' : '📋 复制'}</button>
                 </div>
                 {!videoCollapsed && (
                   <table className={styles.shotTable}>
@@ -148,7 +148,7 @@ export function OutputPanel({ output, status, onRegenerateImage }: OutputPanelPr
                 <ImageCard
                   moduleTag="VIDEO_COVER"
                   title="视频封面图"
-                  data={{ prompt: output.videoScript.coverPrompt || ' ', type: 'image-to-image', status: 'pending' }}
+                  data={{ prompt: output.videoScript.coverPrompt || ' ', type: 'image-to-image', status: (output.videoScript as any).coverStatus || 'pending', imageBase64: (output.videoScript as any).coverImageBase64 }}
                   onRegenerate={(p) => onRegenerateImage?.('VIDEO_COVER', p)}
                   promptCategory="主图B · 场景代入型"
                 />
@@ -168,8 +168,8 @@ export function OutputPanel({ output, status, onRegenerateImage }: OutputPanelPr
               <div className={styles.textHeader}>
                 <span className={styles.textLabel}>文字描述</span>
                 <button className={styles.copyBtn} onClick={async () => {
-                  await navigator.clipboard.writeText(textEditing ? editedText : output.textDesc);
-                }}>📋 复制</button>
+                  await navigator.clipboard.writeText(textEditing ? editedText : output.textDesc); setCopiedIdx(2); setTimeout(() => setCopiedIdx(-1), 1500);
+                }}>{copiedIdx === 2 ? '✓ 已复制' : '📋 复制'}</button>
               </div>
               {textEditing ? (
                 <div className={styles.textEditWrap}>
@@ -265,9 +265,12 @@ function TitleBlock({ output }: { output: ListingOutput }) {
   const [editingB, setEditingB] = useState(false);
   const [editA, setEditA] = useState(output.titleA.text ?? '');
   const [editB, setEditB] = useState(output.titleB.text ?? '');
+  const [titleCopied, setTitleCopied] = useState(false);
 
-  const copyTitle = async (text: string, label: string) => {
+  const copyTitle = async (text: string) => {
     await navigator.clipboard.writeText(text);
+    setTitleCopied(true);
+    setTimeout(() => setTitleCopied(false), 1500);
   };
 
   const renderTitle = (label: string, text: string, chars: number,
@@ -282,7 +285,7 @@ function TitleBlock({ output }: { output: ListingOutput }) {
             {chars} chars
           </span>
         </span>
-        <button className={titleStyles.copyBtn} onClick={() => copyTitle(text, `标题${label}`)}>📋 复制</button>
+        <button className={titleStyles.copyBtn} onClick={() => copyTitle(text)}>{titleCopied ? '✓ 已复制' : '📋 复制'}</button>
       </div>
       {editing ? (
         <div className={titleStyles.titleEditWrap}>

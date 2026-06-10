@@ -49,6 +49,15 @@ export function initListingDb(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_listing_images_run
       ON listing_images(run_id);
+
+    CREATE TABLE IF NOT EXISTS keyword_library (
+      id TEXT PRIMARY KEY,
+      language TEXT NOT NULL DEFAULT 'en',
+      category TEXT NOT NULL,
+      keywords TEXT NOT NULL DEFAULT '[]',
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      UNIQUE(language, category)
+    );
   `);
 }
 
@@ -200,4 +209,34 @@ export function listListingImages(runId: string): ListingImage[] {
     createdAt: row.created_at as number,
     updatedAt: row.updated_at as number,
   }));
+}
+
+// ─── Keyword Library CRUD ─────────────────────────────
+
+export interface KeywordItem { text: string; tag: string | null; }
+
+export function getKeywordLibrary(language: string): Record<string, KeywordItem[]> {
+  const rows = db().prepare('SELECT category, keywords FROM keyword_library WHERE language = ?').all(language) as { category: string; keywords: string }[];
+  const result: Record<string, KeywordItem[]> = {};
+  for (const row of rows) {
+    try { result[row.category] = JSON.parse(row.keywords); } catch { result[row.category] = []; }
+  }
+  return result;
+}
+
+export function saveKeywordCategory(language: string, category: string, keywords: KeywordItem[]) {
+  const now = Date.now();
+  db().prepare(`
+    INSERT INTO keyword_library (id, language, category, keywords, updated_at)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(language, category) DO UPDATE SET keywords = excluded.keywords, updated_at = excluded.updated_at
+  `).run(randomUUID(), language, category, JSON.stringify(keywords), now);
+}
+
+export function deleteKeywordCategory(language: string, category: string) {
+  db().prepare('DELETE FROM keyword_library WHERE language = ? AND category = ?').run(language, category);
+}
+
+export function exportKeywordLibrary(language: string): Record<string, KeywordItem[]> {
+  return getKeywordLibrary(language);
 }

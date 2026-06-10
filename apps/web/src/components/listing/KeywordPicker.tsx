@@ -1,41 +1,36 @@
 /**
- * 关键词选择器 — 移植自 ListingGen KeywordPicker
- * 弹出 Dialog，搜索并选择关键词追加到输入框
+ * 关键词选择器 — daemon SQLite 持久化，按语言分类
  */
 'use client';
 
-import { useState } from 'react';
-import { getKeywordLibrary } from '../../lib/listing/keyword-library';
+import { useState, useEffect } from 'react';
+import { getKeywordLibraryAsync, LANGUAGES, getDefaultCategories, type KeywordItem } from '../../lib/listing/keyword-library';
 import styles from './KeywordPicker.module.css';
 
 interface KeywordPickerProps {
   value: string;
   onConfirm: (newValue: string) => void;
-  defaultCategory?: string;
+  language?: string;
 }
 
-export function KeywordPicker({ value, onConfirm, defaultCategory }: KeywordPickerProps) {
+export function KeywordPicker({ value, onConfirm, language = 'en' }: KeywordPickerProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [library, setLibrary] = useState<Record<string, KeywordItem[]>>({});
+  const [lang, setLang] = useState(language);
 
-  const library = getKeywordLibrary();
+  useEffect(() => {
+    if (open) { getKeywordLibraryAsync(lang).then(setLibrary).catch(() => setLibrary({})); }
+  }, [open, lang]);
 
-  const filtered = search.trim()
+  const items = search.trim()
     ? Object.entries(library).flatMap(([cat, kws]) =>
-        kws.filter((kw) => kw.toLowerCase().includes(search.toLowerCase())).map((kw) => ({ category: cat, keyword: kw })))
-    : Object.entries(library).flatMap(([cat, kws]) => kws.map((kw) => ({ category: cat, keyword: kw })));
-
-  if (defaultCategory && !search.trim()) {
-    filtered.sort((a, b) => {
-      if (a.category === defaultCategory && b.category !== defaultCategory) return -1;
-      if (b.category === defaultCategory && a.category !== defaultCategory) return 1;
-      return 0;
-    });
-  }
+        kws.filter(k => k.text.toLowerCase().includes(search.toLowerCase())).map(k => ({ category: cat, ...k })))
+    : Object.entries(library).flatMap(([cat, kws]) => kws.map(k => ({ category: cat, ...k })));
 
   const toggle = (kw: string) => {
-    setSelected((prev) => { const next = new Set(prev); if (next.has(kw)) next.delete(kw); else next.add(kw); return next; });
+    setSelected(prev => { const n = new Set(prev); n.has(kw) ? n.delete(kw) : n.add(kw); return n; });
   };
 
   const handleConfirm = () => {
@@ -49,38 +44,40 @@ export function KeywordPicker({ value, onConfirm, defaultCategory }: KeywordPick
 
   return (
     <>
-      <button className={styles.pickerBtn} onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(true); }} title="从关键词库选择">
-        📚 从库选择
+      <button className={styles.pickerBtn} onClick={(e) => { e.stopPropagation(); e.preventDefault(); setOpen(true); }} title="关键词库">
+        📚 关键词库
       </button>
-
       {open && (
         <div className={styles.overlay} onClick={() => setOpen(false)}>
           <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.title}>选择关键词</h3>
-            <p className={styles.desc}>搜索并勾选需要的关键词，确认后追加到输入框</p>
-
-            <input className={styles.search} placeholder="搜索关键词..." value={search}
-              onChange={(e) => setSearch(e.target.value)} autoFocus />
-
+            <h3 className={styles.title}>关键词库</h3>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <select className={styles.select} value={lang} onChange={e => setLang(e.target.value)}>
+                {Object.entries(LANGUAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <input className={styles.search} placeholder="搜索..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ flex: 1 }} />
+            </div>
             <div className={styles.list}>
-              {filtered.length === 0 ? (
-                <p className={styles.empty}>关键词库为空。请先在「资源库」页面添加关键词。</p>
+              {items.length === 0 ? (
+                <p className={styles.empty}>关键词库为空。请先在「资源库」添加。</p>
               ) : (
                 (() => {
-                  const grouped = new Map<string, typeof filtered>();
-                  for (const item of filtered) {
-                    const list = grouped.get(item.category) || [];
-                    list.push(item); grouped.set(item.category, list);
-                  }
-                  return [...grouped.entries()].map(([cat, items]) => (
+                  const grouped = new Map<string, typeof items>();
+                  for (const item of items) { const l = grouped.get(item.category) || []; l.push(item); grouped.set(item.category, l); }
+                  const ordered = getDefaultCategories();
+                  const sorted = [...grouped.entries()].sort(([a], [b]) => {
+                    const ia = ordered.indexOf(a), ib = ordered.indexOf(b);
+                    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+                  });
+                  return sorted.map(([cat, catItems]) => (
                     <div key={cat} className={styles.group}>
                       <p className={styles.catName}>{cat}</p>
                       <div className={styles.chips}>
-                        {items.map(({ keyword }) => (
-                          <button key={keyword}
-                            className={`${styles.chip} ${selected.has(keyword) ? styles.chipOn : ''}`}
-                            onClick={() => toggle(keyword)}>
-                            {keyword}
+                        {catItems.map(({ text, tag }) => (
+                          <button key={text}
+                            className={`${styles.chip} ${selected.has(text) ? styles.chipOn : ''}`}
+                            onClick={() => toggle(text)}>
+                            {tag ? { star: '⭐', hot: '🔥', new: '🆕' }[tag] + ' ' : ''}{text}
                           </button>
                         ))}
                       </div>
@@ -89,7 +86,6 @@ export function KeywordPicker({ value, onConfirm, defaultCategory }: KeywordPick
                 })()
               )}
             </div>
-
             <div className={styles.footer}>
               <span className={styles.count}>已选 {selected.size} 个</span>
               <div className={styles.footerBtns}>

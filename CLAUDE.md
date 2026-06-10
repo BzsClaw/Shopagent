@@ -3,6 +3,8 @@
 > **项目代号**：shopagent  
 > **版本**：v0.1.0  
 > **PRD 文档**：`E:\workspace\projects\shopagent-PRD.md`  
+> **使用说明书**：`docs/USER-GUIDE.md`  
+> **开发手册**：`docs/DEVELOPER.md`  
 > **基于**：Fork from Open Design + ListingGen methodology injection  
 
 ---
@@ -383,7 +385,62 @@ console.log('Plugins registered');
 - APIMart 默认值对齐：`ApiKeySettings.tsx` + `listing-routes.ts` 统一使用 `.ai/v1`
 - SSE 解析：`useListingGeneration.ts` 实现 `processSseEvents` + `applyImageToOutput`
 
-### 8. 常用调试命令
+### 8. Listing 集成踩坑（2026-06-10）
+
+#### 8.1 Refly 全栈 mock 不可行
+**坑**：Refly 有 176 个 API 端点，canvas/chat/skill 深度依赖 Go API 后端。试图 mock API 来替代完整后端 → 无尽补丁。
+**教训**：全栈应用不能只跑前端 mock。直接用完整部署版，ShopAgent 只做导航入口。
+**方案**：`window.open('http://47.85.48.19:5700/workspace', '_blank')`
+
+#### 8.2 免登 cookie 同源问题
+**坑**：`localhost:5173` ≠ `127.0.0.1:17456`，浏览器视为跨域，cookie 写不到同名域。
+**教训**：rsbuild proxy 代理 `/api/refly` → daemon，`.env` 用相对路径 `VITE_API_URL=/api/refly`
+
+#### 8.3 生图轮询时间不足
+**坑**：Gemini 默认 20次(60s)轮询，实际可能 124s → 图片"生成失败"但后台已生成。
+**教训**：轮询上限 20→60次(180s)。ListingGen 原版多次实测经验。
+
+#### 8.4 Provider test-connection 响应格式
+**坑**：返回 `{ success: true }`，Refly 检查 `{ status: 'success' }` → 字段名不匹配。
+**教训**：mock 任何 API 前必须读 `services.gen.ts` + `types.gen.ts`。OpenAPI schema 是唯一真相源。
+
+#### 8.5 Provider API key 查找
+**坑**：Refly 的 test-connection 只传 `{ providerId }` 不传 `apiKey`。后端须自己查存储。
+**教训**：查看 `TestProviderConnectionRequest` 类型定义。
+
+#### 8.6 正则表达式 `//` 注释陷阱
+**坑**：`.replace(//+$/, '')` → TypeScript 把 `//` 当行注释。
+**教训**：TS 文件写正则必须转义：`.replace(/\/+$/, '')`
+
+#### 8.7 代码碎片化打补丁
+**坑**：用 `node -e` / `sed` 多次增量修改 → 语法错误、重复路由、作用域问题。
+**教训**：用 Write 工具一次性重写完整文件。
+
+#### 8.8 数据流闭环
+**坑**：Provider CRUD 的 create→list 不联动。
+**教训**：每个"创建"都要对应"列表"能返回、"查询"能找到、"删除"后不存在。
+
+#### 8.9 前端组件作用域
+**坑**：`copiedIdx` 定义在父组件 `OutputPanel`，被独立子组件 `TitleBlock` 引用 → ReferenceError。
+**教训**：独立组件需要自己的 state。不要跨组件共享 useState。
+
+#### 8.10 Next.js 代理 body 限制
+**坑**：图片 base64 上传 `PayloadTooLargeError`。
+**教训**：`express.json({ limit: '16mb' })` + `serverRuntimeConfig: { bodyParser: { sizeLimit: "16mb" } }`
+
+#### 8.11 直接复用原版代码
+**坑**：从零重写 ListingGen 的 ImageCard/OutputPanel/queue → 功能覆盖率不到 50%。
+**教训**：原版成品代码直接复刻，不做二次开发。
+
+#### 8.12 资源库迁移陷阱
+**坑**：localStorage → SQLite 迁移，ResourceLibrary 同步 API 没改异步 → 空白。
+**教训**：存储层迁移必须全链路同步：API → 前端 → 调用方。
+
+#### 8.13 关键词库语言分类
+**坑**：导入 JSON 没传 `language` 参数，默认 'en'。
+**教训**：多语言功能每个 API 调用都要传 `language`，UI 选择器 → 全局同步。
+
+### 9. 常用调试命令
 
 ```bash
 # 服务管理
@@ -448,43 +505,25 @@ cat .tmp/tools-dev/default/logs/daemon/latest.log
 
 | 问题 | 现象 | 方向 |
 |------|------|------|
-| **APIMart 生图失败** | 所有图片生成返回 `fetch failed` | 检查 APIMart API 连通性、CORS、Base URL |
-| **弹窗下拉菜单被底部内容遮挡** | 新建项目弹窗中设计体系选择器的下拉菜单与下方 Target platforms 等内容重叠，菜单无法正常置顶显示 | 详见下方专项记录 |
-
-#### 弹窗下拉菜单遮挡问题（专项记录）
-
-**现象**：新建项目弹窗 → 点击"设计体系"下拉 → 菜单展开后被下方的"Target platforms"等内容穿透遮挡，菜单项与底部控件重叠模糊。
-
-**已尝试方案（均未解决）**：
-1. 提高 `z-index`（30 → 99999）— 无效，弹窗层叠上下文内 z-index 不生效
-2. 改弹窗 `overflow: hidden` → `overflow: visible` — 无效，弹窗布局被破坏
-3. Portal 到 `document.body` + `position: fixed`（参照 CustomSelect）— 下拉菜单成功脱离弹窗 DOM，但仍有残留重叠问题
-
-**涉及文件**：
-- `apps/web/src/components/NewProjectPanel.tsx` — `DesignSystemPicker` 组件（行 ~1893-2159）
-- `apps/web/src/styles/workspace/connectors.css` — `.ds-picker-popover` 样式
-- `apps/web/src/styles/home/new-project-modal.css` — `.new-project-modal` / `.new-project-modal__body` overflow
-- `apps/web/src/components/CustomSelect.tsx` — 已成功使用 portal 的参考实现
-
-**下一步方向**：需在 Windows 实机上调试 DOM 层叠上下文，检查 `backdrop-filter: blur(2px)` 创建的层叠上下文是否影响了 portal 渲染，或考虑将弹窗整体改为 portal 渲染。
+| **弹窗下拉菜单被底部内容遮挡** | 新建项目弹窗中设计体系选择器的下拉菜单与下方 Target platforms 等内容重叠 | Portal + position:fixed |
 
 ### P1 — 功能缺失
 
 | 问题 | 现象 | 方向 |
 |------|------|------|
-| **daemon 启动未自动注册插件** | 每次重启后 `/api/plugins` 返回空 | `registerBundledPlugins` 在启动流程中未执行，需排查 `startServer` 中的 try-catch |
-| **CLI export 未完整实现** | `od listing export` 可导出文本，但不包括从 API 获取图片 | 完善 `cli-listing.ts` cmdExport |
-| **关键词/模板库 daemon 端持久化** | 已实现 JSON 文件存储，但浏览器端 localStorage 和 daemon 端不同步 | 统一数据源 |
-| **插件市场/新建自动化弹窗 i18n** | MarketplaceView、NewAutomationModal、NewProjectModal 无 i18n | 参照 TasksView 模式修复 |
+| **daemon 启动未自动注册插件** | 每次重启后 `/api/plugins` 返回空 | 排查 `startServer` 中的 try-catch |
+| **CLI export 未完整实现** | `od listing export` 不导出图片 | 完善 `cli-listing.ts` |
+| **提示词模板库 localStorage** | 关键词库已改 SQLite，模板库还没改 | 统一持久化 |
+| **关键词库导出按语言** | 导出返回空 JSON | 加语言参数 |
 
 ### P2 — 体验优化
 
 | 问题 | 现象 | 方向 |
 |------|------|------|
-| **暗色模式未完整验证** | 核心 listing 组件已用 CSS 变量，但未逐页测试 | 切换暗色模式，走查全部页面 |
-| **资源库无全屏浏览器** | 目前只有弹窗模式 | PRD §4.2 线框图 |
-| **M5 流式输出** | daemon 端 listing-generate 已支持，但 page.tsx 走浏览器直连未用 | 统一走 daemon SSE |
-| **memory-llm 模型名错误** | 日志大量 `gpt-4o-mini` 错误 | Settings 中配置 memory 模型为 `deepseek-v4-pro` |
+| **暗色模式未完整验证** | listing 组件已用 CSS 变量 | 逐页测试 |
+| **资源库无全屏浏览器** | 目前弹窗模式 | 独立页面 |
+| **memory-llm 模型名错误** | 日志 `gpt-4o-mini` | Settings → `deepseek-v4-pro` |
+| **InputPanel 子类目选择器** | 硬编码缝纫子类目 | 改为通用 |
 
 ---
 

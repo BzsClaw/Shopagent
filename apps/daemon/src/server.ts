@@ -471,7 +471,6 @@ import { createTerminalService } from './terminals.js';
 import { registerSocialShareRoutes } from './social-share-routes.js';
 import { registerListingRoutes } from './listing/listing-routes.js';
 import { initListingDb } from './listing/listing-db.js';
-import { registerReflyRoutes } from './refly/refly-routes.js';
 import { registerMemoryRoutes } from './routes/memory.js';
 import { registerStaticResourceRoutes } from './routes/static-resource.js';
 import { registerRoutineRoutes, routineDbRowToContract } from './routes/routine.js';
@@ -4464,7 +4463,7 @@ export async function startServer({
 
   const app = express();
   installRouteRegistrationGuard(app);
-  app.use(express.json({ limit: '4mb' }));
+  app.use(express.json({ limit: '16mb' }));
   const projectPreviewScopes = createProjectPreviewScopeRegistry();
 
   // Plan §3.K1 — bearer-token middleware.
@@ -14858,7 +14857,6 @@ export async function startServer({
 
   initListingDb(db);
   registerListingRoutes(app);
-  registerReflyRoutes(app);
   registerChatRoutes(app, {
     db,
     design,

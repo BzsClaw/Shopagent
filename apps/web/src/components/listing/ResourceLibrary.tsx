@@ -6,8 +6,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  getKeywordLibrary, addKeyword, removeKeyword, addCategory,
-  exportKeywordLibrary, importKeywordLibrary, DEFAULT_CATEGORIES,
+  getKeywordLibraryAsync, addKeyword, removeKeyword, addCategory, toggleKeywordTag,
+  exportKeywordLibrary, importKeywordLibrary, DEFAULT_CATEGORIES, LANGUAGES,
+  type KeywordItem,
 } from '../../lib/listing/keyword-library';
 import {
   getPromptLibrary, getPromptsByCategory, addPrompt, removePrompt,
@@ -63,15 +64,25 @@ export function ResourceLibrary({ open, onClose }: Props) {
 // ─── 关键词 Tab ────────────────────────────────────────
 
 function KeywordsTab({ refresh }: { refresh: () => void }) {
-  const library = getKeywordLibrary();
+  const [library, setLibrary] = useState<Record<string, KeywordItem[]>>({});
   const [selCat, setSelCat] = useState<string>(DEFAULT_CATEGORIES[0]!);
   const [newKw, setNewKw] = useState('');
   const [newCat, setNewCat] = useState('');
+  const [lang, setLang] = useState('en');
 
-  const categories = Object.keys(library).length > 0 ? Object.keys(library) : DEFAULT_CATEGORIES;
+  useEffect(() => {
+    getKeywordLibraryAsync(lang).then(data => {
+      setLibrary(data as Record<string, KeywordItem[]>);
+    }).catch(() => setLibrary({}));
+  }, [lang]);
+
+  const allCats = Object.keys(library);
+  const categories = allCats.length > 0
+    ? [...DEFAULT_CATEGORIES.filter(c => allCats.includes(c)), ...allCats.filter(c => !DEFAULT_CATEGORIES.includes(c))]
+    : DEFAULT_CATEGORIES;
   const keywords = library[selCat] || [];
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const kw = newKw.trim();
     if (!kw) return;
     addKeyword(selCat, kw);
@@ -104,9 +115,9 @@ function KeywordsTab({ refresh }: { refresh: () => void }) {
       const f = (e.target as HTMLInputElement).files?.[0];
       if (!f) return;
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
-          importKeywordLibrary(reader.result as string);
+          await importKeywordLibrary(reader.result as string, lang);
           refresh();
         } catch { alert('JSON 格式错误'); }
       };
@@ -115,11 +126,18 @@ function KeywordsTab({ refresh }: { refresh: () => void }) {
     input.click();
   };
 
+  const totalKws = Object.values(library).reduce((s, arr) => s + arr.length, 0);
+
   return (
     <div className={styles.splitLayout}>
       {/* 左侧分类树 */}
       <div className={styles.sidebar}>
-        <h3 className={styles.sidebarTitle}>分类</h3>
+        <div className={styles.langRow}>
+          <select className={styles.langSelect} value={lang} onChange={e => setLang(e.target.value)}>
+            {Object.entries(LANGUAGES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        <h3 className={styles.sidebarTitle}>分类 <small>({totalKws}词)</small></h3>
         <div className={styles.catList}>
           {categories.map(cat => (
             <button
@@ -128,18 +146,14 @@ function KeywordsTab({ refresh }: { refresh: () => void }) {
               onClick={() => setSelCat(cat)}
             >
               {cat}
-              <span className={styles.catCount}>{getKeywordLibrary()[cat]?.length || 0}</span>
+              <span className={styles.catCount}>{(library[cat] as KeywordItem[] || []).length}</span>
             </button>
           ))}
         </div>
         <div className={styles.addRow}>
-          <input
-            className={styles.addInput}
-            placeholder="新分类..."
-            value={newCat}
+          <input className={styles.addInput} placeholder="新分类..." value={newCat}
             onChange={e => setNewCat(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAddCategory(); }}
-          />
+            onKeyDown={e => { if (e.key === 'Enter') handleAddCategory(); }} />
           <button className={styles.addBtn} onClick={handleAddCategory}>+</button>
         </div>
         <div className={styles.ioRow}>
@@ -150,29 +164,46 @@ function KeywordsTab({ refresh }: { refresh: () => void }) {
 
       {/* 右侧内容区 */}
       <div className={styles.content}>
-        <h3 className={styles.contentTitle}>{selCat}</h3>
+        <h3 className={styles.contentTitle}>{selCat} <small>({keywords.length}词)</small></h3>
         <div className={styles.addRow}>
-          <input
-            className={styles.addInput}
-            placeholder="输入新关键词..."
-            value={newKw}
+          <input className={styles.addInput} placeholder="输入新关键词..." value={newKw}
             onChange={e => setNewKw(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-          />
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }} />
           <button className={styles.addBtn} onClick={handleAdd}>+</button>
         </div>
         <div className={styles.itemList}>
           {keywords.length === 0 ? (
             <p className={styles.empty}>此分类暂无关键词，上方输入添加</p>
           ) : (
-            keywords.map(kw => (
-              <div key={kw} className={styles.itemRow}>
-                <span className={styles.itemText}>{kw}</span>
-                <button
-                  className={styles.delBtn}
-                  onClick={() => { removeKeyword(selCat, kw); refresh(); }}
-                  title="删除"
-                >✕</button>
+            keywords.map(item => (
+              <div key={item.text} className={styles.itemRow}>
+                <span className={styles.itemText}>
+                  {item.tag === 'star' ? '⭐ ' : item.tag === 'hot' ? '🔥 ' : item.tag === 'new' ? '🆕 ' : ''}
+                  {item.text}
+                </span>
+                <div className={styles.tagBtns}>
+                  {(['star','hot','new'] as const).map(tag => (
+                    <button key={tag} className={styles.tagBtn} title={tag}
+                      style={{ opacity: item.tag === tag ? 1 : 0.3 }}
+                      onClick={async () => {
+                        await toggleKeywordTag(selCat, item.text, tag, lang);
+                        // Refresh local state
+                        setLibrary(prev => {
+                          const next = {...prev};
+                          const items = [...(next[selCat] || [])];
+                          const idx = items.findIndex(i => i.text === item.text);
+                          if (idx >= 0) { items[idx] = {...items[idx], tag: items[idx].tag === tag ? null : tag}; }
+                          next[selCat] = items;
+                          return next;
+                        });
+                      }}>
+                      {{star:'⭐',hot:'🔥',new:'🆕'}[tag]}
+                    </button>
+                  ))}
+                </div>
+                <button className={styles.delBtn}
+                  onClick={() => { removeKeyword(selCat, item.text, lang); refresh(); }}
+                  title="删除">✕</button>
               </div>
             ))
           )}

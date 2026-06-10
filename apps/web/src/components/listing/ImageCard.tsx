@@ -37,8 +37,9 @@ export function ImageCard({
 
   const type = 'type' in data ? data.type : 'image-to-image';
   const imgSrc = data.imageBase64
-    ? `data:image/png;base64,${data.imageBase64}`
+    ? (data.imageBase64.startsWith('data:') ? data.imageBase64 : `data:image/png;base64,${data.imageBase64}`)
     : null;
+  const isQueued = data.status === 'queued';
   const isGenerating = data.status === 'generating';
   const isPending = data.status === 'pending';
   const isFailed = data.status === 'failed';
@@ -83,6 +84,7 @@ export function ImageCard({
           {overlayStr && !collapsed && (
             <span className={styles.overlayBadge}>🏷 {overlayStr}</span>
           )}
+          {collapsed && isQueued && <span className={styles.queuedLabel}>⏳ 排队中</span>}
           {collapsed && isGenerating && <span className={styles.spinner} />}
           {collapsed && isPending && !hasImage && <span className={styles.pendingLabel}>○ 待生成</span>}
           {collapsed && hasImage && <span className={styles.doneLabel}>✓ 已生成</span>}
@@ -122,15 +124,21 @@ export function ImageCard({
                   onClick={(e) => { e.stopPropagation(); handleGenerate(); }}
                   disabled={isGenerating}
                 >
-                  {isGenerating ? '⏳ 生成中...' :
-                   hasImage ? '🔄 重新生成' : '🪄 生成图片'}
+                  {isQueued ? '⏳ 排队中...' :
+                   isGenerating ? '⏳ 生成中...' :
+                   hasImage ? '🔄 重新生成' : '生成图片'}
                 </button>
               )}
             </div>
 
             {/* 右侧：图片预览区 */}
             <div className={styles.previewSide}>
-              {isGenerating ? (
+              {isQueued ? (
+                <div className={styles.previewState}>
+                  <span className={styles.queuedIcon}>⏳</span>
+                  <span className={styles.stateText}>排队中，等待前序任务完成...</span>
+                </div>
+              ) : isGenerating ? (
                 <div className={styles.previewState}>
                   <div className={styles.skeleton} />
                   <span className={styles.spinner} />

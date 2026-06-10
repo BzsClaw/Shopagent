@@ -139,7 +139,7 @@ export function EntryNavRail({ view, onViewChange, onNewProject, open, onClose }
         <NavButton
           ariaLabel="Workflow"
           tooltip="Workflow"
-          onClick={() => navigate({ kind: 'workflow' })}
+          onClick={() => window.open('http://47.85.48.19:5700/workspace', '_blank')}
         >
           <span style={{ fontSize: 18, lineHeight: 1 }}>🔀</span>
         </NavButton>
