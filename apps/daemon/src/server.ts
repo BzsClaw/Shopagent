@@ -14859,7 +14859,6 @@ export async function startServer({
   initListingDb(db);
   registerListingRoutes(app);
   registerReflyRoutes(app);
-
   registerChatRoutes(app, {
     db,
     design,

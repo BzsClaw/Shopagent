@@ -20,12 +20,6 @@ import { MarketplaceView } from './components/MarketplaceView';
 import { PluginDetailView } from './components/PluginDetailView';
 import ListingPage from '@/app/listing/page';
 import MethodologyPage from '@/app/methodology/page';
-import dynamic from 'next/dynamic';
-
-const ReflyWorkbench = dynamic(
-  () => import('./components/workflow/ReflyWorkbench').then((m) => ({ default: m.ReflyWorkbench })),
-  { ssr: false, loading: () => <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: 16 }}>Loading workflow engine...</div> },
-);
 import type { CreateInput, ImportClaudeDesignOutcome } from './components/NewProjectPanel';
 import { MemoryToast } from './components/MemoryToast';
 import { Toast } from './components/Toast';
@@ -1864,7 +1858,7 @@ function AppInner() {
   } else if (route.kind === 'methodology') {
     appMain = <MethodologyPage />;
   } else if (route.kind === 'workflow' || route.kind === 'workflow-detail') {
-    appMain = <ReflyWorkbench />;
+    appMain = <div style={{ width: '100%', height: '100%' }}><iframe src="http://localhost:5173/workspace" style={{ width: '100%', height: '100%', border: 'none' }} title="Refly" /></div>;
   } else if (route.kind === 'design-system-create') {
     appMain = (
       <DesignSystemCreationFlow
