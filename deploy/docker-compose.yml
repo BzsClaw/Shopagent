@@ -1,0 +1,45 @@
+name: shopagent
+
+services:
+  shopagent:
+    container_name: shopagent
+    image: shopagent:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: always
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=256}
+      OD_BIND_HOST: 0.0.0.0
+      OD_ALLOWED_ORIGINS: ${SHOPAGENT_ALLOWED_ORIGINS:-}
+      OD_PORT: 7456
+      OD_WEB_PORT: ${SHOPAGENT_PORT:-7456}
+      OD_API_TOKEN: ${OD_API_TOKEN:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      APIMART_API_KEY: ${APIMART_API_KEY:-}
+    ports:
+      - "127.0.0.1:${SHOPAGENT_PORT:-7456}:7456"
+    volumes:
+      - shopagent_data:/app/.od
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${SHOPAGENT_MEM_LIMIT:-512m}
+    pids_limit: 256
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:7456/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  shopagent_data:

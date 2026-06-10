@@ -1,0 +1,96 @@
+/* TitleOutput — OD tokens + ListingGen 交互 */
+
+.titleCard {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.titleHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.titleLabel {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.charOk {
+  font-size: 11px; font-weight: 600; color: var(--green);
+  background: var(--green-bg); border: 1px solid var(--green-border);
+  border-radius: var(--radius-pill); padding: 2px 8px;
+}
+.charBad {
+  font-size: 11px; font-weight: 600; color: var(--red);
+  background: var(--red-bg); border: 1px solid var(--red-border);
+  border-radius: var(--radius-pill); padding: 2px 8px;
+}
+
+.titleText {
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  word-break: break-all;
+  transition: box-shadow 120ms ease;
+  position: relative;
+}
+.titleText:hover { box-shadow: 0 0 0 1px var(--accent-soft); }
+
+.titleEditWrap { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+
+.titleTextarea {
+  font-family: var(--mono); font-size: 13px; line-height: 1.5;
+  color: var(--text); background: var(--bg-app);
+  border: 1px solid var(--selected); border-radius: var(--radius-sm);
+  padding: 8px 10px; resize: vertical; min-height: 60px; width: 100%;
+}
+
+/* Tags — OD 语义色 */
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tagDefault { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.tagScene { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.tagEmotion { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber); }
+.tagIdentity { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+.tagDiff { background: var(--accent-tint); color: var(--accent); border: 1px solid var(--accent-soft); }
+
+.tag {
+  font-family: var(--sans); font-size: 11px; font-weight: 500;
+  border-radius: var(--radius-pill); padding: 2px 8px;
+  display: inline-flex; align-items: center; gap: 3px;
+}
+
+/* Check card */
+.checkCard {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px;
+}
+.checkTitle { font-family: var(--sans); font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+.checkRow { display: flex; flex-wrap: wrap; gap: 12px; }
+.checkItem { font-family: var(--sans); font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.checkPass { color: var(--green); }
+.checkFail { color: var(--text-muted); }
+
+/* Copy btn */
+.copyBtn {
+  font-family: var(--sans); font-size: 11px; color: var(--text-muted);
+  background: transparent; border: 0; cursor: pointer;
+  padding: 2px 6px; border-radius: 4px; transition: all 120ms ease;
+}
+.copyBtn:hover { color: var(--text); background: var(--bg-subtle); }

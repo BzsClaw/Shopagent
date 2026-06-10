@@ -1,0 +1,202 @@
+/* ListingWorkbench — OD chrome + ListingGen 分割线 */
+
+.workbench {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+  color: var(--text);
+  font-family: var(--sans);
+}
+
+/* ─── Chrome Header ────────────────── */
+
+.chrome {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--bg-panel) 88%, var(--bg-subtle));
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.logo { font-size: 18px; line-height: 1; }
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-family: var(--sans);
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.backBtn:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
+/* ─── 顶部导航 ───────────────── */
+
+.topNav {
+  display: inline-flex; align-items: center; gap: 2px;
+  margin-left: 16px;
+}
+
+.navBtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--sans); font-size: 12px; font-weight: 500;
+  color: var(--text-muted); background: transparent;
+  border: 0; border-radius: var(--radius-sm);
+  padding: 5px 10px; cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: color 120ms ease, background 120ms ease;
+}
+.navBtn:hover {
+  color: var(--text); background: var(--bg-subtle);
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin: 0;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  margin-left: auto;
+}
+
+.pillSpinner {
+  width: 10px; height: 10px;
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.statusDone {
+  font-size: 12px; font-weight: 600;
+  color: var(--green); background: var(--green-bg);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px; margin-left: auto;
+}
+
+.statusFail {
+  font-size: 12px; font-weight: 600;
+  color: var(--red); background: var(--red-bg);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px; margin-left: auto;
+}
+
+.settingsBtn {
+  font-size: 16px; background: transparent; border: 0; cursor: pointer;
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  color: var(--text-muted); transition: all 120ms ease;
+  -webkit-app-region: no-drag; margin-left: auto;
+}
+.settingsBtn:hover { background: var(--bg-subtle); color: var(--text); }
+
+/* Modal */
+.modalOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
+}
+.modalContent {
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); max-width: 600px; width: 90vw;
+  max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg);
+}
+.modalHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px 0; font-family: var(--sans); font-size: 16px; font-weight: 600;
+}
+.modalClose {
+  font-size: 18px; background: transparent; border: 0; cursor: pointer;
+  color: var(--text-muted); padding: 4px 8px; border-radius: var(--radius-sm);
+}
+.modalClose:hover { background: var(--bg-subtle); color: var(--text); }
+
+/* ─── 主分栏 ──────────────────────── */
+
+.split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.leftPane {
+  min-width: 280px;
+  overflow: hidden;
+}
+
+.rightPane {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* ─── 可拖拽分割线 ────────────────── */
+
+.divider {
+  width: 6px;
+  cursor: col-resize;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  margin-left: -3px;
+  margin-right: -3px;
+}
+
+.divider::after {
+  content: '';
+  position: absolute;
+  inset: 0 -3px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.divider:hover::after {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.dividerActive::after {
+  background: var(--accent);
+}

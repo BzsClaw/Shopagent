@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  .methodology-article {
+    max-width: 760px; margin: 0 auto; padding: 40px 32px 60px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px; line-height: 1.85; color: #2c2c2c;
+  }
+  .methodology-article h1 {
+    font-size: 28px; font-weight: 700; color: #1a1a1a;
+    border-bottom: 3px solid #c96442; padding-bottom: 12px; margin: 0 0 8px;
+  }
+  .methodology-article h2 {
+    font-size: 20px; font-weight: 700; color: #c96442;
+    margin: 36px 0 12px; padding-left: 12px;
+    border-left: 4px solid #c96442;
+  }
+  .methodology-article h3 {
+    font-size: 16px; font-weight: 600; color: #b45a3b;
+    margin: 24px 0 8px; padding: 8px 14px;
+    background: #fef7f3; border-radius: 6px;
+    border-left: 3px solid #e8a882;
+  }
+  .methodology-article h4 {
+    font-size: 14px; font-weight: 600; color: #5a4a3f;
+    margin: 18px 0 6px;
+  }
+  .methodology-article p { margin: 0 0 14px; }
+  .methodology-article strong { color: #b45a3b; font-weight: 600; }
+  .methodology-article blockquote {
+    margin: 16px 0; padding: 12px 16px;
+    background: #fff9f5; border-left: 4px solid #e8a882;
+    border-radius: 0 8px 8px 0; color: #6b5a4f; font-size: 14px;
+  }
+  .methodology-article ul, .methodology-article ol {
+    margin: 8px 0 16px; padding-left: 24px;
+  }
+  .methodology-article li { margin: 4px 0; }
+  .methodology-article code {
+    background: #fdf3eb; color: #c96442; font-size: 13px;
+    padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+  }
+  .methodology-article pre {
+    background: #fdf6f0; border: 1px solid #f0d8c8;
+    border-radius: 8px; padding: 14px 18px; overflow-x: auto;
+    font-size: 13px; line-height: 1.6;
+  }
+  .methodology-article pre code { background: none; color: #4a3a2f; padding: 0; }
+  .methodology-article table {
+    width: 100%; border-collapse: collapse; margin: 16px 0;
+    font-size: 13px;
+  }
+  .methodology-article th {
+    background: #c96442; color: #fff; font-weight: 600;
+    padding: 10px 14px; text-align: left;
+  }
+  .methodology-article td {
+    padding: 8px 14px; border-bottom: 1px solid #f0d8c8;
+  }
+  .methodology-article tr:nth-child(even) td { background: #fefaf7; }
+  .methodology-article hr {
+    border: 0; border-top: 1px solid #e8d5c8; margin: 28px 0;
+  }
+  /* Mermaid 流程图 */
+  .methodology-article pre.mermaid {
+    background: #faf8f6; border: 1px solid #e8d5c8;
+    border-radius: 10px; padding: 20px; margin: 18px 0;
+    overflow-x: auto; text-align: center;
+  }
+  /* 关键提示卡片 */
+  .methodology-article .key-card {
+    background: linear-gradient(135deg, #fff9f5, #fef3ea);
+    border: 1px solid #f0c8a8; border-radius: 10px;
+    padding: 14px 18px; margin: 16px 0;
+  }
+  .methodology-article .key-card strong { color: #c96442; }
+  /* 差异对比表 */
+  .methodology-article .compare-table th:first-child { background: #8a6a5a; }
+  .methodology-article .compare-table th:nth-child(2) { background: #c96442; }
+  .methodology-article .compare-table th:nth-child(3) { background: #58B2DC; }
+</style>
+
+</head>
+<body style="margin:0;background:#fdfcfa;">
+<article class="methodology-article">
+
+<h2><strong>第二章 · 需求侧：搜出真需求</strong></h2>
+
+<h3><strong>2.1 用四步方法论跑需求侧</strong></h3>
+
+<p>在平台电商场景下，需求侧的本质是<strong>“采集与分层”</strong>。你不需要创造需求，只需要像矿工一样把用户已经表达出来的意图（搜索词）开采出来并结构化。</p>
+
+<h4><strong>① 接受不可知：从“我以为”转向“搜索联想”</strong></h4>
+<p>不要假设印尼买家想要什么，直接去问算法。</p>
+<ul><li><strong>动作</strong>：在 Shopee 搜索框输入种子词（如 <code>sewing</code>），抄下所有下拉联想词。</li>
+<li><strong>逻辑</strong>：联想词是平台根据真实搜索量排好序的“答案”。如果联想词里出现了 <code>sewing kit for jeans</code> 而没出现 <code>sewing kit for silk</code>，那就证明前者是真需求，后者是伪命题。</li>
+</ul>
+<h4><strong>② 系统布局：建立“分层关键词库”</strong></h4>
+<p>采集到的词如果只是散乱的列表，就无法指导选品和 Listing。必须按<strong>表层、场景层、情绪层、身份层</strong>进行分层标注。</p>
+<ul><li><strong>逻辑</strong>：这是多 SKU 长尾策略的地基。分层能让你看清哪些词是红海（避开），哪些词是蓝海（主攻），哪些词是卖点来源（抄进文案）。</li>
+</ul>
+<h4><strong>③ 抓住关键：锁定“高搜索 × 低竞争 × 高意图”</strong></h4>
+<p>并不是所有长尾词都值得做。用三个维度过滤出“靶心词”：</p>
+<ul><li><strong>维度</strong>：搜索量（需求真）、竞争商品数（蓝海）、购买信号（词里带 <code>buy</code> / <code>set</code> / <code>for...</code>）。</li>
+<li><strong>逻辑</strong>：只把精力压在“有肉吃、对手少、买意强”的那 20% 关键词上。</li>
+</ul>
+<h4><strong>④ 极致执行：用“小批量上新”当需求探针</strong></h4>
+<p>不要憋大招，直接上架 Listing 去测。</p>
+<ul><li><strong>动作</strong>：挑 20~30 个靶心词，每个词对应一个 Listing，给极小预算的关键词广告。</li>
+<li><strong>逻辑</strong>：看自然曝光的增长速度。哪个 Listing 跑得最快，哪个词就是“真金白银”的需求，后续往这个方向补更多 SKU。</li>
+</ul>
+<p>> <strong>【缝纫包注脚】</strong> </p>
+<p>> 1. <strong>采集</strong>：输入 <code>jahit</code>（印尼语缝纫），发现联想词里 <code>alat jahit portable</code> 排名极高。</p>
+<p>> 2. <strong>分层</strong>：将 <code>sewing kit</code> 标为表层，<code>for jeans repair</code> 标为场景层，<code>heavy duty needles</code> 标为情绪层。</p>
+<p>> 3. <strong>选靶</strong>：发现 <code>portable sewing kit for beginners</code> 搜索量中等但竞品极弱，定为第一批 20 个 SKU 的核心方向。</p>
+
+<hr>
+
+<h3><strong>2.2 需求侧的时间节奏（日/周/月动作清单）</strong></h3>
+
+<p>需求侧的节奏在于<strong>“高频采集，低频重构”</strong>。</p>
+
+%%TABLE_ROW%%<td>周期</td><td>诊断动作（看）</td><td>优化动作（动）</td><td>目的</td>%%ENDROW%%
+
+<table class="compare-table"><thead><tr><th><strong>每日</strong></th><th>扫一眼核心长尾词的搜索排名</th><th>无（除非排名暴跌）</th><th>监控异常，保持敏感度</th></tr></thead><tbody><tr><td><strong>每周</strong></td><td>导出本周自然流量来源词表</td><td>补充 3-5 个新发现的潜力长尾词入库</td><td>捕捉搜索趋势的微小波动</td></tr>
+<tr><td><strong>每月</strong></td><td>重新跑一遍种子词下拉联想</td><td><strong>重构分层词库</strong>，剔除死词，升级新身份层</td><td>确保地基资产不因季节或流行而失效</td></tr></tbody></table>
+<hr>
+
+<h3><strong>2.3 需求侧的飞轮：从微创新到颠覆</strong></h3>
+
+<p>需求侧的飞轮转起来，意味着你对用户意图的理解越来越深。</p>
+
+<ul><li><strong>微创新（每周）</strong>：在现有词库里发现一个新修饰词（如 <code>travel size</code>），立刻把它加进 5 个 Listing 的标题末尾测 CTR。</li>
+<li><strong>常规创新（每月）</strong>：发现一个新的“场景层”交叉点（如 <code>sewing kit for student dorm</code>），为此专门打包一个新的 SKU 组合上架。</li>
+<li><strong>颠覆性创新（每季度）</strong>：通过搜索数据发现用户不再搜“配件”，转而搜“成品 DIY 方案”，果断从“卖工具”跨越到“卖手工材料包”，实现维度打击。</li>
+</ul>
+<pre class="mermaid">graph TD
+    A[联想词采集] --&gt; B[分层词库沉淀]
+    B --&gt; C{数据反馈}
+    C --&gt;|微创新| D[标题/卖点微调]
+    C --&gt;|常规创新| E[新增场景类SKU]
+    C --&gt;|颠覆创新| F[品类/模式重构]
+    D --&gt; A
+    E --&gt; A
+    F --&gt; A
+    style F fill:#f96,stroke:#333,stroke-width:2px</pre>
+
+<hr>
+
+<h3><strong>本章总结：四步咬合</strong></h3>
+
+<p>需求侧的四步咬合，本质上是<strong>“把不确定的市场意图，沉淀为确定的词库资产”</strong>的过程。</p>
+
+<ul><li><strong>接受不可知</strong> 让你不至于陷入主观偏见。</li>
+<li><strong>系统布局</strong> 让你的搜索流量有据可依。</li>
+<li><strong>抓住关键</strong> 保证了投入产出比。</li>
+<li><strong>极致执行</strong> 让你通过实战不断修正词库的准确性。</li>
+</ul>
+<p>> <strong>【缝纫包注脚】</strong> 如果你不跑这四步，你可能永远在卷 <code>sewing kit</code> 这个大词；跑完之后，你手里握着的是 <code>portable heavy duty jeans repair kit</code> 这种精准流量入口。<strong>这就是机器的力量。</strong></p>
+
+<hr>
+
+<strong>【第二章 · 完】</strong>
+
+</article>
+</body>
+</html>
