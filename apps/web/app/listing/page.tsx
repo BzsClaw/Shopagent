@@ -115,7 +115,7 @@ export default function ListingPage() {
       if (tag === 'MAIN_A') { next.mainA.status = p.status as ImageModule['status']; if (p.imageBase64) next.mainA.imageBase64 = p.imageBase64; }
       else if (tag === 'MAIN_B') { next.mainB.status = p.status as ImageModule['status']; if (p.imageBase64) next.mainB.imageBase64 = p.imageBase64; }
       else if (tag === 'MAIN_C') { next.mainC.status = p.status as ImageModule['status']; if (p.imageBase64) next.mainC.imageBase64 = p.imageBase64; }
-      else if (tag === 'VIDEO_COVER') { if (p.imageBase64) next.videoScript.coverImageBase64 = p.imageBase64; if (p.status) next.videoScript.coverStatus = p.status; }
+      else if (tag === 'VIDEO_COVER') { if (p.imageBase64) next.videoScript.coverImageBase64 = p.imageBase64; if (p.status) (next.videoScript as any).coverStatus = p.status; }
       else if (tag.startsWith('DETAIL_')) {
         const idx = parseInt(tag.split('_')[1]!) - 1;
         if (idx >= 0 && idx < next.details.length) {

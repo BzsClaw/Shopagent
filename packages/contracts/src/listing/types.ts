@@ -83,6 +83,7 @@ export interface VideoScriptOutput {
   shots: VideoShot[];
   coverPrompt: string;
   coverImageBase64?: string;
+  coverStatus?: string;
 }
 
 export interface VideoShot {

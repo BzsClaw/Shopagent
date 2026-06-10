@@ -148,7 +148,7 @@ export function OutputPanel({ output, status, onRegenerateImage }: OutputPanelPr
                 <ImageCard
                   moduleTag="VIDEO_COVER"
                   title="视频封面图"
-                  data={{ prompt: output.videoScript.coverPrompt || ' ', type: 'image-to-image', status: (output.videoScript as any).coverStatus || 'pending', imageBase64: (output.videoScript as any).coverImageBase64 }}
+                  data={{ prompt: output.videoScript.coverPrompt || ' ', type: 'image-to-image', status: output.videoScript.coverStatus || 'pending', imageBase64: (output.videoScript as any).coverImageBase64 }}
                   onRegenerate={(p) => onRegenerateImage?.('VIDEO_COVER', p)}
                   promptCategory="主图B · 场景代入型"
                 />
