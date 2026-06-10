@@ -440,7 +440,50 @@ console.log('Plugins registered');
 **坑**：导入 JSON 没传 `language` 参数，默认 'en'。
 **教训**：多语言功能每个 API 调用都要传 `language`，UI 选择器 → 全局同步。
 
-### 9. 常用调试命令
+### 9. 阿里云部署踩坑（2026-06-10）
+
+#### 9.1 生产构建 vs 开发模式差异
+**坑**：本地 `pnpm tools-dev run web` 跑 dev mode 正常，服务器 `next build` 大量类型错误。
+**原因**：dev mode 采用 Turbopack 宽松检查，`next build` 严格执行 TypeScript 类型检查。
+**教训**：提交前必须在本地跑一次 `pnpm --filter @open-design/web build` 做预检。未通过不提交。
+
+#### 9.2 typescript 类型定义缺失
+**坑**：`queued`、`coverStatus`、`defaultCategory` 等新加字段未同步更新 contracts 类型定义，本地不报错，生产构建失败。
+**教训**：所有新增字段必须在 `packages/contracts/src/listing/types.ts` 同步更新。构建前跑 `pnpm typecheck`。
+
+#### 9.3 Alibaba Cloud Linux 4 的 Node 版本陷阱
+**坑**：`dnf install nodejs` 只能装到 22，没有 24。GitHub 连不上无法用 nvm。
+**教训**：直接下载 Node 24 二进制包：`wget https://nodejs.org/dist/v24.13.0/node-v24.13.0-linux-x64.tar.xz` → 解压到 `/usr/local/`。
+
+#### 9.4 OD_BIND_HOST 需要 API Token
+**坑**：`OD_BIND_HOST=0.0.0.0` 时 daemon 要求必须设 `OD_API_TOKEN`，否则直接抛错退出。
+**教训**：systemd service 必须配置 `Environment=OD_API_TOKEN=xxx`。
+
+#### 9.5 better-sqlite3 编译问题
+**坑**：服务器上 `better-sqlite3` 需要 `gcc gcc-c++ make python3` 编译工具。Node 版本变更后需要 `pnpm rebuild better-sqlite3`。
+**教训**：部署前 `dnf install -y gcc gcc-c++ make python3`，遇到 `ERR_DLOPEN_FAILED` 时 `pnpm rebuild`。
+
+#### 9.6 Next.js 16 废弃配置项
+**坑**：`serverRuntimeConfig` 在 Next.js 16 已废弃，生产构建报错。
+**教训**：Next.js 16 不再支持 `serverRuntimeConfig`，body 大小限制改用其他方式。
+
+#### 9.7 阿里云安全组端口未放行
+**坑**：服务本地 `curl localhost:7456` 通，外网访问不通。FirewallD 未运行。
+**教训**：阿里云 ECS 需要在控制台 **安全组 → 入方向** 手动添加端口规则。
+
+#### 9.8 服务器 2G 内存不够构建
+**坑**：`next build` OOM（SIGABRT）。
+**教训**：添加 swap（`dd + mkswap + swapon`），限制 Node 内存 `NODE_OPTIONS="--max-old-space-size=2048"`。
+
+#### 9.9 GitHub 国内连不上
+**坑**：服务器 `git clone` 和 `nvm install` 连 GitHub 失败。
+**教训**：项目设置为 Public 可免认证。关键依赖提前下载二进制包。
+
+#### 9.10 部署命令格式陷阱
+**坑**：heredoc（`<< 'EOF'`）在终端直接粘贴可能不生效，停留在 `>` 提示符。
+**教训**：给用户提供单行命令或 `printf` 格式的配置生成命令。
+
+### 10. 常用调试命令
 
 ```bash
 # 服务管理
