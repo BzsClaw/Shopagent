@@ -112,15 +112,119 @@ export function registerReflyRoutes(router: Router): void {
     results.set(id, { resultId: id, status: 'finish', title: req.body?.title ?? '' });
     res.json(ok(results.get(id)));
   });
-  router.post('/api/refly/v1/skill/streamInvoke', (req, res) => {
+  router.post('/api/refly/v1/skill/streamInvoke', async (req, res) => {
     const id = req.body?.resultId || randomUUID();
-    const q = req.body?.input?.query || req.body?.title || '';
-    results.set(id, { resultId: id, status: 'finish', title: req.body?.title ?? '' });
-    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
-    function sse(ev: string, d: any) { res.write('data: ' + JSON.stringify({ event: ev, resultId: id, ...d }) + '\n\n'); }
+    const query = req.body?.input?.query || req.body?.title || '';
+    const contextResults = req.body?.context?.results ?? [];
+
+    // Build messages: context from previous nodes + current query
+    const messages: any[] = [
+      { role: 'system', content: 'You are an AI assistant executing a workflow step. Provide clear, concise, and actionable output.' },
+    ];
+    // Inject context from predecessor nodes
+    if (contextResults.length > 0) {
+      const prevOutputs = contextResults.map((r: any) => {
+        const stored = results.get(r.resultId);
+        return stored?.output || r.resultId;
+      }).filter(Boolean);
+      if (prevOutputs.length > 0) {
+        messages.push({
+          role: 'system',
+          content: 'Previous step outputs:\n' + prevOutputs.join('\n---\n'),
+        });
+      }
+    }
+    messages.push({ role: 'user', content: query });
+
+    // Get API key from stored providers (first one with an apiKey) or env
+    let apiKey = '';
+    let baseUrl = 'https://api.deepseek.com';
+    for (const p of providers.values()) {
+      if (p.apiKey) { apiKey = p.apiKey; if (p.baseUrl) baseUrl = p.baseUrl; break; }
+    }
+    if (!apiKey) apiKey = process.env.DEEPSEEK_API_KEY || '';
+
+    results.set(id, { resultId: id, status: 'executing', title: req.body?.title ?? '' });
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    });
+    function sse(ev: string, d: any) {
+      res.write('data: ' + JSON.stringify({ event: ev, resultId: id, ...d }) + '\n\n');
+    }
+
+    if (!apiKey || !query.trim()) {
+      sse('start', {});
+      if (!apiKey) sse('stream', { content: 'No API key configured. Add a provider in Settings → Model Providers.' });
+      else sse('stream', { content: 'Empty query. Please enter a prompt.' });
+      sse('end', { status: 'finish' });
+      res.end();
+      return;
+    }
+
     sse('start', {});
-    sse('stream', { content: 'Processing: ' + q });
-    sse('end', { status: 'finish' });
+
+    try {
+      const model = req.body?.modelName || 'deepseek-v4-pro';
+      const apiUrl = baseUrl.replace(/\/+$/, '') + '/v1/chat/completions';
+      const ctrl = new AbortController();
+      setTimeout(() => ctrl.abort(), 120000);
+
+      const resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({ model, messages, stream: true, temperature: 0.7, max_tokens: 4096 }),
+        signal: ctrl.signal,
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        sse('stream', { content: 'API Error ' + resp.status + ': ' + errText.slice(0, 200) });
+        sse('end', { status: 'failed' });
+        results.set(id, { resultId: id, status: 'failed', title: req.body?.title ?? '' });
+        res.end();
+        return;
+      }
+
+      // Stream DeepSeek SSE back as Refly SSE events
+      const reader = resp.body?.getReader();
+      if (!reader) { sse('end', { status: 'finish' }); res.end(); return; }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (delta) {
+              fullContent += delta;
+              sse('stream', { content: delta });
+            }
+          } catch { /* skip unparseable chunks */ }
+        }
+      }
+
+      results.set(id, { resultId: id, status: 'finish', title: req.body?.title ?? '', output: fullContent });
+      sse('end', { status: 'finish' });
+    } catch (err: any) {
+      sse('stream', { content: 'Error: ' + (err?.message || String(err)) });
+      sse('end', { status: 'failed' });
+      results.set(id, { resultId: id, status: 'failed', title: req.body?.title ?? '' });
+    }
     res.end();
   });
 
