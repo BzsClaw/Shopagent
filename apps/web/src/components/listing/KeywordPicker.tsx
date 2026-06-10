@@ -11,6 +11,7 @@ interface KeywordPickerProps {
   value: string;
   onConfirm: (newValue: string) => void;
   language?: string;
+  defaultCategory?: string;
 }
 
 export function KeywordPicker({ value, onConfirm, language = 'en' }: KeywordPickerProps) {
