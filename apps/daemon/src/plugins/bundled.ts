@@ -101,7 +101,7 @@ export async function registerBundledPlugins(
       try {
         await registerOne({ folder, folderId: entry.name, out, warnings, input });
       } catch (err) {
-        warnings.push(`bundled plugin ${entry.name} threw: ${(err)?.message ?? err}`);
+        warnings.push(`bundled plugin ${entry.name} threw: ${(err as Error)?.message ?? String(err)}`);
       }
     }
   }

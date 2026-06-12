@@ -65,6 +65,7 @@ function buildListingHtml(productName: string, output: Record<string, unknown> |
   const o = output || {} as any;
   const imgMap = new Map(images.map(i => [i.tag, i]));
   const titleA = o.titleA?.text || '';
+  const titleB = o.titleB?.text || '';
   const mi = (tag: string) => imgMap.has(tag) ? tag : "";
   const textDesc = o.textDesc || '';
   const details = o.details || [];
@@ -268,8 +269,8 @@ export function registerListingRoutes(router: Router): void {
         status: img.status,
       };
       if (includeImages) {
-        (base as Record<string, unknown>).imageBase64 = img.imageBase64 ?? null;
-        (base as Record<string, unknown>).imageUrl = img.imageUrl ?? null;
+        (base as unknown as Record<string, unknown>).imageBase64 = img.imageBase64 ?? null;
+        (base as unknown as Record<string, unknown>).imageUrl = img.imageUrl ?? null;
       }
       return base;
     });
@@ -397,7 +398,7 @@ export function registerListingRoutes(router: Router): void {
       const row = savePromptTemplate({
         name: name as string,
         category: category as string,
-        tags: Array.isArray(tags) ? tags as string[] : undefined,
+        tags: (Array.isArray(tags) ? tags as string[] : []) as string[],
         prompt: prompt as string,
         bestModel: bestModel as string | undefined,
       });
