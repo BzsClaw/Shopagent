@@ -58,6 +58,17 @@ export function initListingDb(db: Database.Database): void {
       updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
       UNIQUE(language, category)
     );
+
+    CREATE TABLE IF NOT EXISTS prompt_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      tags TEXT NOT NULL DEFAULT '[]',
+      prompt TEXT NOT NULL,
+      best_model TEXT,
+      created_at TEXT NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+    );
   `);
 }
 
@@ -239,4 +250,40 @@ export function deleteKeywordCategory(language: string, category: string) {
 
 export function exportKeywordLibrary(language: string): Record<string, KeywordItem[]> {
   return getKeywordLibrary(language);
+}
+
+// ─── Prompt Templates CRUD ─────────────────────────────
+
+export interface PromptTemplateRow {
+  id: string;
+  name: string;
+  category: string;
+  tags: string;
+  prompt: string;
+  best_model: string | null;
+  created_at: string;
+}
+
+export function listPromptTemplates(): PromptTemplateRow[] {
+  const rows = db().prepare('SELECT * FROM prompt_templates ORDER BY category, name').all() as PromptTemplateRow[];
+  return rows;
+}
+
+export function savePromptTemplate(params: {
+  name: string; category: string; tags?: string[]; prompt: string; bestModel?: string;
+}): PromptTemplateRow {
+  const id = randomUUID();
+  const now = Date.now();
+  const createdAt = new Date().toISOString().slice(0, 10);
+  const tags = JSON.stringify(params.tags ?? []);
+  db().prepare(`
+    INSERT INTO prompt_templates (id, name, category, tags, prompt, best_model, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, params.name, params.category, tags, params.prompt, params.bestModel ?? null, createdAt, now);
+  return { id, name: params.name, category: params.category, tags, prompt: params.prompt, best_model: params.bestModel ?? null, created_at: createdAt };
+}
+
+export function deletePromptTemplate(id: string): boolean {
+  const result = db().prepare('DELETE FROM prompt_templates WHERE id = ?').run(id);
+  return result.changes > 0;
 }

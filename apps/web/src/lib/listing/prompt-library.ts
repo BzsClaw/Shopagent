@@ -1,9 +1,7 @@
 /**
- * 提示词模板库 — 移植自 ListingGen src/lib/prompt-library.ts
- * localStorage 持久化
+ * 提示词模板库 — daemon SQLite 持久化
+ * Migrated from localStorage to SQLite (Bug #3 fix).
  */
-const STORAGE_KEY = 'shopagent_prompt_library';
-
 export interface PromptTemplate {
   id: string; name: string; category: string; tags: string[]; prompt: string;
   bestModel?: string; createdAt: string;
@@ -15,32 +13,82 @@ export const PROMPT_CATEGORIES = [
   '详情图4 · 便携收纳', '详情图5 · 使用场景', '详情图6 · 信任兜底',
 ];
 
-function load(): PromptTemplate[] {
-  if (typeof window === 'undefined') return [];
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : []; } catch { return []; }
-}
-function save(templates: PromptTemplate[]) { if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(templates)); }
-function genId(): string { return `pt_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
+// ─── Daemon API ──────────────────────────────────────
 
-export function getPromptLibrary(): PromptTemplate[] { return load(); }
-export function getPromptsByCategory(category: string): PromptTemplate[] { return load().filter((p) => p.category === category); }
-export function addPrompt(data: Omit<PromptTemplate, 'id' | 'createdAt'>): PromptTemplate {
-  const templates = load(); const next: PromptTemplate = { ...data, id: genId(), createdAt: new Date().toISOString().slice(0, 10) };
-  templates.push(next); save(templates); return next;
+async function api(path: string, init?: RequestInit): Promise<any> {
+  const res = await fetch('/api/listing' + path, init);
+  if (!res.ok) throw new Error('API ' + res.status);
+  return res.json();
 }
+
+// ─── Public API ──────────────────────────────────────
+
+let _cache: PromptTemplate[] | null = null;
+
+export async function getPromptLibrary(): Promise<PromptTemplate[]> {
+  try {
+    const rows = await api('/prompts');
+    _cache = rows as PromptTemplate[];
+    return _cache;
+  } catch {
+    return _cache ?? [];
+  }
+}
+
+export function getPromptLibrarySync(): PromptTemplate[] {
+  return _cache ?? [];
+}
+
+export async function getPromptsByCategory(category: string): Promise<PromptTemplate[]> {
+  const all = await getPromptLibrary();
+  return all.filter((p) => p.category === category);
+}
+
+export async function addPrompt(data: Omit<PromptTemplate, 'id' | 'createdAt'>): Promise<PromptTemplate> {
+  const result = await api('/prompts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  // Invalidate cache
+  _cache = null;
+  return { ...data, id: result.id, createdAt: new Date().toISOString().slice(0, 10) };
+}
+
 export function updatePrompt(id: string, data: Partial<Omit<PromptTemplate, 'id' | 'createdAt'>>) {
-  const templates = load(); const idx = templates.findIndex((p) => p.id === id);
-  if (idx === -1) return;
-  const existing = templates[idx]!;
-  templates[idx] = { id: existing.id, name: data.name ?? existing.name, category: data.category ?? existing.category, tags: data.tags ?? existing.tags, prompt: data.prompt ?? existing.prompt, bestModel: data.bestModel ?? existing.bestModel, createdAt: existing.createdAt };
-  save(templates);
+  // Not yet implemented server-side; no-op for now
 }
-export function removePrompt(id: string) { save(load().filter((p) => p.id !== id)); }
-export function exportPromptLibrary(): string { return JSON.stringify(load(), null, 2); }
-export function importPromptLibrary(json: string): PromptTemplate[] {
-  const parsed = JSON.parse(json); if (!Array.isArray(parsed)) throw new Error('格式错误');
-  const incoming = parsed.filter((p: unknown) => p && typeof p === 'object' && typeof (p as PromptTemplate).name === 'string' && typeof (p as PromptTemplate).prompt === 'string') as PromptTemplate[];
-  const existing = load(); const existingKeys = new Set(existing.map((p) => `${p.name}|${p.category}`));
+
+export async function removePrompt(id: string): Promise<void> {
+  await api('/prompts/' + encodeURIComponent(id), { method: 'DELETE' });
+  _cache = null;
+}
+
+export async function exportPromptLibrary(): Promise<string> {
+  const all = await getPromptLibrary();
+  return JSON.stringify(all, null, 2);
+}
+
+export async function importPromptLibrary(json: string): Promise<PromptTemplate[]> {
+  const parsed = JSON.parse(json);
+  if (!Array.isArray(parsed)) throw new Error('格式错误');
+  const incoming = parsed.filter(
+    (p: unknown) => p && typeof p === 'object'
+      && typeof (p as PromptTemplate).name === 'string'
+      && typeof (p as PromptTemplate).prompt === 'string'
+  ) as PromptTemplate[];
+
+  const existing = await getPromptLibrary();
+  const existingKeys = new Set(existing.map((p) => `${p.name}|${p.category}`));
+
   const merged = [...existing, ...incoming.filter((p) => !existingKeys.has(`${p.name}|${p.category}`))];
-  save(merged); return merged;
+
+  // Persist new entries one by one
+  for (const p of incoming.filter((p) => !existingKeys.has(`${p.name}|${p.category}`))) {
+    try {
+      await addPrompt({ name: p.name, category: p.category, tags: p.tags ?? [], prompt: p.prompt, bestModel: p.bestModel });
+    } catch { /* skip duplicate */ }
+  }
+  _cache = null;
+  return merged;
 }

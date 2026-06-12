@@ -4934,7 +4934,7 @@ export async function startServer({
       for (const w of result.warnings) console.warn(`[plugins] bundled warn: ${w}`);
     }
   } catch (err) {
-    console.warn(`[plugins] bundled registration failed: ${(err)?.message ?? err}`);
+    console.warn(`[plugins] bundled registration failed:`, err);
   }
 
   try {

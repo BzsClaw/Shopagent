@@ -35,6 +35,9 @@ import {
   getKeywordLibrary,
   saveKeywordCategory,
   deleteKeywordCategory,
+  listPromptTemplates,
+  savePromptTemplate,
+  deletePromptTemplate,
   type KeywordItem,
 } from './listing-db.js';
 
@@ -54,22 +57,18 @@ const DATA_DIR = resolveDataDir();
 // ─── HTML 生成 ─────────────────────────────────────────
 function esc(s: string): string { return s?.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || ''; }
 
-function imgTag(base64: string | undefined, alt: string): string {
-  if (!base64) return '<div class=\"img-placeholder\">🖼 ' + esc(alt) + '</div>';
-  const src = base64.startsWith('data:') ? base64 : 'data:image/png;base64,' + base64;
-  return '<img src=\"' + src + '\" alt=\"' + esc(alt) + '\" loading=\"lazy\" />';
+function imgTag(filename: string, alt: string): string {
+  return '<img src="' + esc(filename) + '.png" alt="' + esc(alt) + '" loading="lazy" />';
 }
 
 function buildListingHtml(productName: string, output: Record<string, unknown> | undefined, images: Array<{ tag: string; status: string; imageBase64?: string }>): string {
   const o = output || {} as any;
   const imgMap = new Map(images.map(i => [i.tag, i]));
-  const mi = (tag: string) => imgMap.get(tag)?.imageBase64;
   const titleA = o.titleA?.text || '';
-  const titleB = o.titleB?.text || '';
+  const mi = (tag: string) => imgMap.has(tag) ? tag : "";
   const textDesc = o.textDesc || '';
   const details = o.details || [];
   const shots = o.videoScript?.shots || [];
-  const coverB64 = o.videoScript?.coverImageBase64;
 
   const CSS = `:root{--bg:#faf9f7;--panel:#fdfcfa;--border:#e1e5eb;--text:#1a1916;--muted:#74716b;--accent:#c96442;--accent-soft:#f5d8cb;--radius:8px;--sans:Inter,system-ui,sans-serif;--mono:JetBrains Mono,monospace}
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6}
@@ -122,7 +121,7 @@ th{background:var(--bg);font-weight:600}
 
   // 2. 视觉展示 (视频封面 + 主图ABC 四栏)
   html += '<div class="section"><div class="section-title">🖼 视觉展示</div><div class="visual-grid">';
-  html += '<div class="card"><h4>🎬 视频封面</h4>' + imgTag(coverB64 || mi('VIDEO_COVER'), '视频封面') + '</div>';
+  html += '<div class="card"><h4>🎬 视频封面</h4>' + imgTag('VIDEO_COVER', '视频封面') + '</div>';
   html += '<div class="card"><h4>A · 卖点放大</h4>' + imgTag(mi('MAIN_A'), '主图A') + '</div>';
   html += '<div class="card"><h4>B · 场景代入</h4>' + imgTag(mi('MAIN_B'), '主图B') + '</div>';
   html += '<div class="card"><h4>C · 极简纯净</h4>' + imgTag(mi('MAIN_C'), '主图C') + '</div>';
@@ -259,13 +258,21 @@ export function registerListingRoutes(router: Router): void {
     const run = getListingRun(param(req, 'id'));
     if (!run) { res.status(404).json({ error: 'Run not found' }); return; }
 
+    const includeImages = req.query?.includeImages === 'true';
     const images = listListingImages(run.id);
-    const imageStatuses: ListingImageStatus[] = images.map((img) => ({
-      id: img.id,
-      moduleTag: img.moduleTag,
-      model: img.model,
-      status: img.status,
-    }));
+    const imageStatuses: ListingImageStatus[] = images.map((img) => {
+      const base: ListingImageStatus = {
+        id: img.id,
+        moduleTag: img.moduleTag,
+        model: img.model,
+        status: img.status,
+      };
+      if (includeImages) {
+        (base as Record<string, unknown>).imageBase64 = img.imageBase64 ?? null;
+        (base as Record<string, unknown>).imageUrl = img.imageUrl ?? null;
+      }
+      return base;
+    });
 
     const status: ListingRunStatus = {
       id: run.id,
@@ -363,15 +370,50 @@ export function registerListingRoutes(router: Router): void {
 
   // GET /api/listing/prompts
   router.get('/api/listing/prompts', (_req: Request, res: Response) => {
+    try {
+      const rows = listPromptTemplates();
+      res.json(rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        category: r.category,
+        tags: JSON.parse(r.tags),
+        prompt: r.prompt,
+        bestModel: r.best_model,
+        createdAt: r.created_at,
+      })));
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to list prompts' });
+    }
   });
 
   // POST /api/listing/prompts
   router.post('/api/listing/prompts', (req: Request, res: Response) => {
     try {
-      res.json({ ok: true });
+      const { name, category, tags, prompt, bestModel } = req.body as Record<string, unknown>;
+      if (!name || !category || !prompt) {
+        res.status(400).json({ error: 'name, category, prompt required' });
+        return;
+      }
+      const row = savePromptTemplate({
+        name: name as string,
+        category: category as string,
+        tags: Array.isArray(tags) ? tags as string[] : undefined,
+        prompt: prompt as string,
+        bestModel: bestModel as string | undefined,
+      });
+      res.json({ id: row.id, ok: true });
     } catch (err) {
       res.status(400).json({ error: 'Invalid prompt data' });
     }
+  });
+
+  // DELETE /api/listing/prompts/:id
+  router.delete('/api/listing/prompts/:id', (req: Request, res: Response) => {
+    const id = param(req, 'id');
+    if (!id) { res.status(400).json({ error: 'id required' }); return; }
+    const deleted = deletePromptTemplate(id);
+    if (!deleted) { res.status(404).json({ error: 'Prompt not found' }); return; }
+    res.json({ ok: true });
   });
 
   // GET /api/listing/runs

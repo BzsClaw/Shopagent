@@ -211,7 +211,7 @@ async function cmdExport(runId: string | undefined, flags: Map<string, string | 
 
   const daemonUrl = process.env.OD_DAEMON_URL ?? 'http://127.0.0.1:7456';
   try {
-    const res = await fetch(`${daemonUrl}/api/listing/runs/${runId}`);
+    const res = await fetch(`${daemonUrl}/api/listing/runs/${runId}?includeImages=true`);
     const data = await res.json() as Record<string, unknown>;
     if (json) {
       process.stdout.write(JSON.stringify(data) + '\n');
@@ -280,6 +280,18 @@ async function cmdExport(runId: string | undefined, flags: Map<string, string | 
           if (b64) writeBase64Image(fs, path, outputDir, `detail-${i + 1}.png`, b64);
           if (prompt) fs.writeFileSync(path.join(outputDir, `detail-${i + 1}-prompt.txt`), prompt, 'utf-8');
           if (overlay) fs.writeFileSync(path.join(outputDir, `detail-${i + 1}-overlay.txt`), overlay, 'utf-8');
+        }
+      }
+
+      // 导出实际生成的图片（从 images 数组，含 base64）
+      const images = data.images as Array<Record<string, unknown>> | undefined;
+      if (images) {
+        for (const img of images) {
+          const b64 = img.imageBase64 as string | undefined;
+          const tag = img.moduleTag as string | undefined;
+          if (b64 && tag) {
+            writeBase64Image(fs, path, outputDir, `${tag}.png`, b64);
+          }
         }
       }
     }

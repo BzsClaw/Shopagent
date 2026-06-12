@@ -11,7 +11,7 @@ import {
   type KeywordItem,
 } from '../../lib/listing/keyword-library';
 import {
-  getPromptLibrary, getPromptsByCategory, addPrompt, removePrompt,
+  getPromptLibrary, addPrompt, removePrompt,
   exportPromptLibrary, importPromptLibrary, PROMPT_CATEGORIES,
   type PromptTemplate,
 } from '../../lib/listing/prompt-library';
@@ -28,12 +28,13 @@ export function ResourceLibrary({ open, onClose }: Props) {
   const [tab, setTab] = useState<TabId>('keywords');
   const [tick, setTick] = useState(0);
   const refresh = () => setTick(n => n + 1);
+  const [fullscreen, setFullscreen] = useState(false);
 
   if (!open) return null;
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.dialog} onClick={e => e.stopPropagation()}>
+      <div className={`${styles.dialog} ${fullscreen ? styles.dialogFullscreen : ''}`} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <h2 className={styles.title}>📚 资源库</h2>
           <div className={styles.tabs}>
@@ -46,6 +47,7 @@ export function ResourceLibrary({ open, onClose }: Props) {
               onClick={() => setTab('prompts')}
             >提示词模板库</button>
           </div>
+          <button className={styles.closeBtn} onClick={() => setFullscreen(!fullscreen)} title="全屏">{fullscreen ? '🗗' : '🗖'}</button>
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
@@ -85,22 +87,22 @@ function KeywordsTab({ refresh }: { refresh: () => void }) {
   const handleAdd = async () => {
     const kw = newKw.trim();
     if (!kw) return;
-    addKeyword(selCat, kw);
+    await addKeyword(selCat, kw, lang);
     setNewKw('');
     refresh();
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     const cat = newCat.trim();
     if (!cat || categories.includes(cat)) return;
-    addCategory(cat);
+    await addCategory(cat, lang);
     setNewCat('');
     setSelCat(cat);
     refresh();
   };
 
-  const handleExport = () => {
-    const blob = new Blob([exportKeywordLibrary()], { type: 'application/json' });
+  const handleExport = async () => {
+    const blob = new Blob([await exportKeywordLibrary(lang)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'shopagent-keywords.json';
@@ -216,26 +218,32 @@ function KeywordsTab({ refresh }: { refresh: () => void }) {
 // ─── 提示词模板 Tab ─────────────────────────────────────
 
 function PromptsTab({ refresh }: { refresh: () => void }) {
-  const allPrompts = getPromptLibrary();
+  const [allPrompts, setAllPrompts] = useState<PromptTemplate[]>([]);
   const [selCat, setSelCat] = useState<string>(PROMPT_CATEGORIES[0]!);
   const [editing, setEditing] = useState<PromptTemplate | null>(null);
   const [newName, setNewName] = useState('');
   const [newPrompt, setNewPrompt] = useState('');
   const [showAdd, setShowAdd] = useState(false);
 
-  const prompts = getPromptsByCategory(selCat);
+  useEffect(() => {
+    getPromptLibrary().then(setAllPrompts).catch(() => setAllPrompts([]));
+  }, []);
 
-  const handleAdd = () => {
+  const prompts = allPrompts.filter((p) => p.category === selCat);
+
+  const handleAdd = async () => {
     if (!newName.trim() || !newPrompt.trim()) return;
-    addPrompt({ name: newName.trim(), category: selCat, tags: [], prompt: newPrompt.trim() });
+    await addPrompt({ name: newName.trim(), category: selCat, tags: [], prompt: newPrompt.trim() });
     setNewName('');
     setNewPrompt('');
     setShowAdd(false);
+    getPromptLibrary().then(setAllPrompts).catch(() => {});
     refresh();
   };
 
-  const handleExport = () => {
-    const blob = new Blob([exportPromptLibrary()], { type: 'application/json' });
+  const handleExport = async () => {
+    const json = await exportPromptLibrary();
+    const blob = new Blob([json], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'shopagent-prompts.json';
@@ -250,9 +258,10 @@ function PromptsTab({ refresh }: { refresh: () => void }) {
       const f = (e.target as HTMLInputElement).files?.[0];
       if (!f) return;
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         try {
-          importPromptLibrary(reader.result as string);
+          await importPromptLibrary(reader.result as string);
+          getPromptLibrary().then(setAllPrompts).catch(() => {});
           refresh();
         } catch { alert('JSON 格式错误'); }
       };
@@ -333,7 +342,7 @@ function PromptsTab({ refresh }: { refresh: () => void }) {
                     >📋 复制</button>
                     <button
                       className={styles.delBtn}
-                      onClick={() => { removePrompt(p.id); refresh(); }}
+                      onClick={async () => { await removePrompt(p.id); refresh(); }}
                     >✕ 删除</button>
                   </div>
                 </div>

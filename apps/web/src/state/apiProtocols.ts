@@ -149,6 +149,7 @@ export const SUGGESTED_MODELS_BY_PROTOCOL: Record<ApiProtocol, readonly string[]
 export const FAST_MODEL_BY_PROTOCOL: Record<ApiProtocol, string> = {
   anthropic: 'claude-haiku-4-5',
   openai: 'gpt-4o-mini',
+  deepseek: 'deepseek-v4-pro',
   azure: 'gpt-4o-mini',
   google: 'gemini-2.0-flash',
   // Ollama Cloud doesn't have a clean "fast small model" default that
@@ -167,6 +168,7 @@ export const API_PROTOCOL_TABS: ReadonlyArray<{
 }> = [
   { id: 'anthropic', title: 'Anthropic' },
   { id: 'openai', title: 'OpenAI' },
+  { id: 'deepseek', title: 'DeepSeek' },
   { id: 'azure', title: 'Azure OpenAI' },
   { id: 'google', title: 'Google Gemini' },
   { id: 'ollama', title: 'Ollama Cloud' },
@@ -182,6 +184,7 @@ export const API_PROTOCOL_LABELS: Record<ApiProtocol, string> = {
   ollama: 'Ollama Cloud API',
   senseaudio: 'SenseAudio API',
   aihubmix: 'AIHubMix API',
+  deepseek: 'DeepSeek API',
 };
 
 export const API_KEY_PLACEHOLDERS: Record<ApiProtocol, string> = {
@@ -192,6 +195,7 @@ export const API_KEY_PLACEHOLDERS: Record<ApiProtocol, string> = {
   ollama: 'Ollama API key',
   senseaudio: 'SenseAudio API key',
   aihubmix: 'sk-...',
+  deepseek: 'sk-...',
 };
 
 // Default base URL the daemon assumes when the user leaves the field
@@ -205,6 +209,7 @@ export const DEFAULT_BASE_URL_BY_PROTOCOL: Record<ApiProtocol, string> = {
   ollama: 'https://ollama.com',
   senseaudio: 'https://api.senseaudio.cn',
   aihubmix: 'https://aihubmix.com/v1',
+  deepseek: 'https://api.deepseek.com',
 };
 
 // Fixed-origin gateways: managed single-endpoint providers where the user only

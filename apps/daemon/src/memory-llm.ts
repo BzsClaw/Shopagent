@@ -121,6 +121,12 @@ const PROVIDER_DEFAULTS = {
     model: 'gpt-4o-mini',
     baseUrl: 'https://api.openai.com',
   },
+  // DeepSeek uses OpenAI-compatible wire format but the model naming
+  // must be deepseek-specific so auto-pick doesn't default to gpt-4o-mini.
+  deepseek: {
+    model: 'deepseek-v4-pro',
+    baseUrl: 'https://api.deepseek.com',
+  },
   azure: {
     model: 'gpt-4o-mini',
     baseUrl: '',
@@ -166,6 +172,7 @@ const PROVIDER_DEFAULTS = {
 function envKeyFor(provider) {
   if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY?.trim() || '';
   if (provider === 'openai') return process.env.OPENAI_API_KEY?.trim() || '';
+  if (provider === 'deepseek') return process.env.DEEPSEEK_API_KEY?.trim() || '';
   if (provider === 'azure') {
     return (
       process.env.AZURE_OPENAI_API_KEY?.trim()
@@ -214,14 +221,14 @@ function chatProtocolFromAgentId(agentId) {
   const id = agentId.trim().toLowerCase();
   if (id === 'claude') return 'anthropic';
   if (id === 'gemini') return 'google';
-  // Codex, OpenCode, Qwen, DeepSeek, Kimi, Copilot, Pi, Kiro, Kilo,
+  if (id === 'deepseek') return 'deepseek';
+  // Codex, OpenCode, Qwen, Kimi, Copilot, Pi, Kiro, Kilo,
   // Vibe, Devin, Hermes, Cursor-Agent, Qoder all use the OpenAI chat-
   // completions wire format.
   if (
     id === 'codex'
     || id === 'opencode'
     || id === 'qwen'
-    || id === 'deepseek'
     || id === 'kimi'
     || id === 'copilot'
     || id === 'pi'

@@ -98,7 +98,11 @@ export async function registerBundledPlugins(
       const folder = path.join(tierAbs, entry.name);
       const manifest = path.join(folder, 'open-design.json');
       if (!(await pathExists(manifest))) continue;
-      await registerOne({ folder, folderId: entry.name, out, warnings, input });
+      try {
+        await registerOne({ folder, folderId: entry.name, out, warnings, input });
+      } catch (err) {
+        warnings.push(`bundled plugin ${entry.name} threw: ${(err)?.message ?? err}`);
+      }
     }
   }
 

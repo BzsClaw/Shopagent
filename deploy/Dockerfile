@@ -68,11 +68,11 @@ RUN pnpm --filter @open-design/daemon build && \
       -name "binding.gyp" \
     \) -delete
 
-# Stage-2 assets — ShopAgent needs skills + design-systems + craft for skill composition.
-# OD-specific assets (plugins, frames, pets) are omitted.
+# Stage-2 assets — ShopAgent needs skills + design-systems + craft + plugins.
 COPY skills ./skills
 COPY design-systems ./design-systems
 COPY craft ./craft
+COPY plugins ./plugins
 COPY prompt-templates ./prompt-templates
 
 FROM ${RUNTIME_IMAGE}

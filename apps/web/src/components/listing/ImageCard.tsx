@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import type { ImageModule, DetailModule } from '@open-design/contracts';
-import { getPromptsByCategory, type PromptTemplate } from '../../lib/listing/prompt-library';
+import { getPromptLibrary, type PromptTemplate } from '../../lib/listing/prompt-library';
 import styles from './ImageCard.module.css';
 
 interface ImageCardProps {
@@ -29,6 +29,14 @@ export function ImageCard({
   const [editablePrompt, setEditablePrompt] = useState(data.prompt ?? '');
   const [copied, setCopied] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [templates, setTemplates] = useState<PromptTemplate[]>([]);
+
+  useEffect(() => {
+    getPromptLibrary().then(all => {
+      setTemplates(all.filter((p: PromptTemplate) => p.category === (promptCategory || '')));
+    }).catch(() => setTemplates([]));
+  }, [promptCategory]);
 
   // 当 data.prompt 变化时同步（新数据到达），不覆盖用户手动编辑
   useEffect(() => {
@@ -146,7 +154,11 @@ export function ImageCard({
                 </div>
               ) : hasImage ? (
                 <div className={styles.imageWrap}>
-                  <img src={imgSrc!} alt={moduleTag} className={styles.image} />
+                  <img
+                    src={imgSrc!} alt={moduleTag} className={styles.image}
+                    onClick={() => setLightboxOpen(true)}
+                    style={{ cursor: 'pointer' }}
+                  />
                   <button className={styles.downloadBtn} onClick={(e) => { e.stopPropagation(); handleDownload(); }}>
                     ⬇ 下载
                   </button>
@@ -172,12 +184,12 @@ export function ImageCard({
         <div className={styles.tmplOverlay} onClick={() => setTemplateOpen(false)}>
           <div className={styles.tmplDialog} onClick={(e) => e.stopPropagation()}>
             <h3 className={styles.tmplTitle}>选择提示词模板</h3>
-            <p className={styles.tmplDesc}>{promptCategory} · 共 {getPromptsByCategory(promptCategory || '').length} 个模板</p>
+            <p className={styles.tmplDesc}>{promptCategory} · 共 {templates.length} 个模板</p>
             <div className={styles.tmplList}>
-              {getPromptsByCategory(promptCategory || '').length === 0 ? (
+              {templates.length === 0 ? (
                 <p className={styles.tmplEmpty}>此分类暂无模板，请先去「资源库」添加。</p>
               ) : (
-                getPromptsByCategory(promptCategory || '').map((t: PromptTemplate) => (
+                templates.map((t: PromptTemplate) => (
                   <div key={t.id} className={styles.tmplItem}
                     onClick={() => { setEditablePrompt(t.prompt); setTemplateOpen(false); }}>
                     <div className={styles.tmplItemHeader}>
@@ -192,6 +204,17 @@ export function ImageCard({
               )}
             </div>
             <button className={styles.tmplClose} onClick={() => setTemplateOpen(false)}>关闭</button>
+          </div>
+        </div>
+      )}
+
+      {/* 图片放大预览 */}
+      {lightboxOpen && imgSrc && (
+        <div className={styles.tmplOverlay} onClick={() => setLightboxOpen(false)}>
+          <div className={styles.lightbox} onClick={(e) => e.stopPropagation()}>
+            <button className={styles.lightboxClose} onClick={() => setLightboxOpen(false)}>✕</button>
+            <img src={imgSrc} alt={title} className={styles.lightboxImg} />
+            <p className={styles.lightboxCaption}>{title}</p>
           </div>
         </div>
       )}
